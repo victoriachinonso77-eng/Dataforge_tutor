@@ -1,0 +1,125 @@
+# agents/student_tracker.py
+# Student Progress Tracker
+# Saves student progress to JSON so teacher dashboard can read it
+
+import json
+import os
+import uuid
+from datetime import datetime
+
+DATA_FILE = "student_data.json"
+
+
+def load_all_students() -> list[dict]:
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE) as f:
+            return json.load(f)
+    return []
+
+
+def save_all_students(students: list[dict]):
+    with open(DATA_FILE, "w") as f:
+        json.dump(students, f, indent=2, default=str)
+
+
+def get_or_create_student(name: str, level: str) -> dict:
+    """Gets existing student or creates a new one."""
+    students = load_all_students()
+    for s in students:
+        if s.get("name", "").lower() == name.lower():
+            return s
+    # Create new
+    new_student = {
+        "id":              str(uuid.uuid4())[:8],
+        "name":            name,
+        "level":           level,
+        "score":           0,
+        "steps_completed": [],
+        "quiz_results":    {},
+        "dataset_name":    "",
+        "last_active":     datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "approved":        False,
+        "teacher_feedback":"",
+        "joined":          datetime.now().strftime("%Y-%m-%d %H:%M"),
+    }
+    students.append(new_student)
+    save_all_students(students)
+    return new_student
+
+
+def update_student_progress(name: str, score: int,
+                             steps: list[str],
+                             quiz_results: dict = None,
+                             dataset_name: str = ""):
+    """Updates student progress — called from app.py after each step."""
+    students = load_all_students()
+    for s in students:
+        if s.get("name", "").lower() == name.lower():
+            s["score"]           = score
+            s["steps_completed"] = steps
+            s["last_active"]     = datetime.now().strftime("%Y-%m-%d %H:%M")
+            if dataset_name:
+                s["dataset_name"] = dataset_name
+            if quiz_results:
+                s["quiz_results"] = quiz_results
+            break
+    save_all_students(students)
+
+
+def get_teacher_feedback(name: str) -> str:
+    """Gets any feedback left by the teacher for this student."""
+    students = load_all_students()
+    for s in students:
+        if s.get("name", "").lower() == name.lower():
+            return s.get("teacher_feedback", "")
+    return ""
+
+
+def get_or_create_student_id() -> str:
+    """Generates or retrieves a unique student session ID."""
+    return str(uuid.uuid4())[:8]
+
+
+def save_student_progress(student_id: str, name: str, level: str,
+                           steps: list, score: int, dataset: str,
+                           n_rows: int, elapsed: float,
+                           wrong_questions: list = None):
+    """
+    Saves or updates student progress to JSON file.
+    This feeds the teacher dashboard with real data.
+    """
+    students = load_all_students()
+
+    # Find existing or create new entry
+    existing = next((s for s in students if s.get("id") == student_id), None)
+
+    entry = existing or {
+        "id":              student_id,
+        "name":            name or "Anonymous",
+        "level":           level,
+        "joined":          datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "teacher_feedback": "",
+        "approved":        False,
+    }
+
+    entry.update({
+        "name":            name or entry.get("name", "Anonymous"),
+        "level":           level,
+        "score":           score,
+        "quiz_total":      max(score, len(steps) * 10),
+        "steps_completed": steps,
+        "dataset":         dataset,
+        "rows":            n_rows,
+        "runtime":         f"{elapsed}s",
+        "last_active":     datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "wrong_questions": wrong_questions or [],
+    })
+
+    if existing:
+        for i, s in enumerate(students):
+            if s.get("id") == student_id:
+                students[i] = entry
+    else:
+        students.append(entry)
+
+    save_all_students(students)
