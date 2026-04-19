@@ -236,6 +236,22 @@ def render_challenge_tab(analysis_result=None, df=None):
                                 st.session_state.sq_analysis_summary,
                                 st.session_state.sq_difficulty,
                             )
+
+                        # Save progress to JSON
+                        from auth import save_session_result
+                        username = st.session_state.get("current_user", {}).get("username")
+                        if username:
+                            save_session_result(username, {
+                                "total_score": result.total_score,
+                                "max_score": result.max_score,
+                                "percentage": result.percentage,
+                                "badge": result.badge,
+                                "difficulty": st.session_state.sq_difficulty,
+                                "mastered_concepts": result.mastered_concepts,
+                                "weak_concepts": result.weak_concepts,
+                                "summary": result.summary,
+                            })
+
                         st.session_state.sq_summary = result
                         st.session_state.sq_phase = "results"
                         st.rerun()
