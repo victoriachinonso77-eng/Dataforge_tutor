@@ -133,3 +133,4 @@ def save_student_progress(student_id: str, name: str, level: str,
         students.append(entry)
 
     save_all_students(students)
+    
