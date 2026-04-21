@@ -1,8 +1,6 @@
 # agents/dataset_history.py — Dataset History Agent
 # Remembers the last 5 datasets a user uploaded so they can reload them quickly.
-# Usage: from agents.dataset_history import save_to_history, render_history_panel
-#        Call save_to_history(st, df, filename) whenever a user uploads a dataset.
-#        Call render_history_panel(st) in the sidebar or a dedicated section.
+
 
 import streamlit as st
 import pandas as pd
