@@ -124,6 +124,7 @@ def save_student_progress(student_id: str, name: str, level: str,
         "wrong_questions": wrong_questions or [],
     })
 
+
     if existing:
         for i, s in enumerate(students):
             if s.get("id") == student_id:
