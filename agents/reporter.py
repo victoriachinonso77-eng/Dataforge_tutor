@@ -48,7 +48,7 @@ Do NOT make up data that isn't in the provided insights.
 """
 
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="llama-3.3-70b-versatile",
         messages=[
             {"role": "system", "content": "You are DataForge, a professional AI data analyst. Write clear, accurate, insightful reports."},
             {"role": "user", "content": prompt}

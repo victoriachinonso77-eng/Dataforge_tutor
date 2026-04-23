@@ -20,7 +20,7 @@ def run_pipeline(df: pd.DataFrame, use_gpt: bool = False, progress_callback=None
 
     Args:
         df: Raw uploaded dataframe
-        use_gpt: Whether to use OpenAI GPT-4 for the report
+        use_gpt: Whether to use Groq LLaMA for the report
         progress_callback: Optional callable(step: int, message: str)
 
     Returns:
@@ -68,13 +68,13 @@ def run_pipeline(df: pd.DataFrame, use_gpt: bool = False, progress_callback=None
 
         # ── STEP 4: Report ───────────────────────────────────────────────────
         update(4, "✍️ Agent 4: Writing analysis report...")
-        api_key = os.getenv("OPENAI_API_KEY", "")
+        api_key = os.getenv("GROQ_API_KEY", "")
 
-        if use_gpt and api_key and api_key != "your_openai_api_key_here":
-            from openai import OpenAI
-            client = OpenAI(api_key=api_key)
+        if use_gpt and api_key:
+            from groq import Groq
+            client = Groq(api_key=api_key)
             report = generate_report(insights, audit_log, client)
-            update(4, "✍️ Agent 4: GPT-4 report written.")
+            update(4, "✍️ Agent 4: LLaMA report written.")
         else:
             report = generate_report_fallback(insights, audit_log)
             update(4, "✍️ Agent 4: Report written (fallback mode — no API key needed).")

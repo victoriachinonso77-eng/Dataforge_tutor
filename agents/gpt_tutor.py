@@ -10,7 +10,7 @@ def _chat(client, system: str, user: str, max_tokens: int = 600, temperature: fl
     """Helper to call GPT-4 and return text response."""
     try:
         resp = client.chat.completions.create(
-            model="gpt-4",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user",   "content": user},

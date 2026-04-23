@@ -61,6 +61,7 @@ Create a `.env` file in the root folder:
 OPENAI_API_KEY=sk-your-key-here
 YOUTUBE_API_KEY=AIza-your-key-here
 TAVILY_API_KEY=tvly-your-key-here
+GROQ_API_KEY=
 ```
 
 ### Step 5 — Run the app

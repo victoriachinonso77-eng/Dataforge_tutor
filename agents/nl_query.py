@@ -266,7 +266,7 @@ ANSWER: [your answer]
 CODE: [pandas code]"""
 
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="llama-3.3-70b-versatile",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
         max_tokens=500

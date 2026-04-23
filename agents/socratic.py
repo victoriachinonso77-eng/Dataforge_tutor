@@ -1,5 +1,5 @@
 """
-Agent 7 — Socratic Teaching Agent (OpenAI version)
+Agent 7 — Socratic Teaching Agent (Groq LLaMA version)
 """
 
 import json
@@ -7,12 +7,12 @@ import os
 import re
 from dataclasses import dataclass
 from typing import Optional
-from openai import OpenAI
+from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
 @dataclass
@@ -78,7 +78,8 @@ Return ONLY a valid JSON array. No markdown, no explanation. Schema:
 
 def _build_evaluation_prompt(question, user_answer, analysis_summary, prior_score):
     return f"""
-You are a strict but encouraging data science tutor.
+You are a strict data science examiner. You do NOT give marks for effort or vague answers.
+You only award marks for correct, specific, technically accurate content.
 
 Dataset context:
 {json.dumps(analysis_summary, indent=2)}
@@ -91,13 +92,25 @@ Expected keywords/ideas: {question.expected_keywords}
 Student's answer:
 "{user_answer}"
 
-Running score so far: {prior_score} points.
+STRICT scoring rules — follow these exactly:
+- 0   : Answer is blank, completely irrelevant, or does not address the question at all
+- 1-2 : Answer mentions the topic area but shows fundamental misunderstanding
+- 3-4 : Answer is on the right topic but missing all key technical reasoning
+- 5-6 : Answer shows partial understanding — correct idea but lacks depth or precision
+- 7-8 : Answer is mostly correct with minor gaps or missing one key point
+- 9-10: Answer is complete, precise, technically accurate, and shows deep understanding
+
+PENALTIES — automatically deduct points for:
+- Generic textbook answers that do not reference this specific dataset or question: -3 points
+- Answering a different question than what was asked: score must be 0-2 maximum
+- Correct keywords used but in the wrong context: -2 points
+- No mention of at least one expected keyword or idea: cap score at 4 maximum
 
 Return ONLY valid JSON:
 {{
   "score": <integer 0-10>,
-  "is_correct": <true if score >= 6>,
-  "explanation": "<2-4 sentences: what was right, what was missing, correct reasoning>",
+  "is_correct": <true if score >= 7>,
+  "explanation": "<2-4 sentences: be specific about what was wrong or missing>",
   "follow_up": "<one follow-up question to deepen thinking, or null>",
   "concept_tag": "{question.concept}"
 }}
@@ -120,7 +133,7 @@ Return ONLY plain text, no JSON, no markdown.
 def generate_questions(analysis_summary: dict, difficulty: str = "intermediate", n: int = 5) -> list:
     prompt = _build_question_prompt(analysis_summary, difficulty, n)
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="llama-3.3-70b-versatile",
         messages=[
             {"role": "system", "content": "You are a Socratic data science tutor. Return only valid JSON."},
             {"role": "user", "content": prompt}
@@ -140,9 +153,9 @@ def evaluate_answer(question, user_answer: str, analysis_summary: dict, prior_sc
         return AnswerFeedback(score=0, is_correct=False, explanation="No answer provided.", follow_up=question.hint, concept_tag=question.concept)
     prompt = _build_evaluation_prompt(question, user_answer, analysis_summary, prior_score)
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="llama-3.3-70b-versatile",
         messages=[
-            {"role": "system", "content": "You are a strict but encouraging data science tutor. Return only valid JSON."},
+            {"role": "system", "content": "You are a strict data science examiner. Return only valid JSON."},
             {"role": "user", "content": prompt}
         ],
         temperature=0.3,
@@ -162,16 +175,16 @@ def compute_session_result(feedbacks: list, analysis_summary: dict, difficulty: 
     mastered = [f.concept_tag for f in feedbacks if f.score >= 7]
     weak = [f.concept_tag for f in feedbacks if f.score < 5]
     if pct >= 85:
-        badge = "Trophy Expert"
+        badge = "🏆 Expert"
     elif pct >= 70:
-        badge = "Data Scientist"
+        badge = "🎓 Data Scientist"
     elif pct >= 50:
-        badge = "Analyst"
+        badge = "📊 Analyst"
     else:
-        badge = "Novice"
+        badge = "🌱 Novice"
     prompt = _build_summary_prompt(feedbacks, analysis_summary, difficulty)
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="llama-3.3-70b-versatile",
         messages=[
             {"role": "system", "content": "You are an encouraging data science tutor."},
             {"role": "user", "content": prompt}
