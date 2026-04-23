@@ -1,7 +1,6 @@
 # agents/theme_toggle.py — Dark/Light Mode Toggle
 # Add to the top of your app.py sidebar to let users switch themes.
-# Usage: from agents.theme_toggle import render_theme_toggle
-#         render_theme_toggle(st)
+
 
 import streamlit as st
 

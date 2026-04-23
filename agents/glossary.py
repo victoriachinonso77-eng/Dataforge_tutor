@@ -1,7 +1,5 @@
 # agents/glossary.py — Data Science Glossary Tab
-# A searchable dictionary of data science terms for students.
-# Usage: from agents.glossary import show_glossary_tab
-#        Call show_glossary_tab(st) inside a Streamlit tab.
+# A searchable dictionary of data science terms for students
 
 import streamlit as st
 
