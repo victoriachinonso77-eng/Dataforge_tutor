@@ -155,6 +155,7 @@ def run_automl(df: pd.DataFrame, target_col: str) -> dict:
         results["best_model"] = best_model_name
         results["best_score"] = round(float(best_score), 4)
 
+
         # Feature importance for best model
         if best_model_obj and hasattr(best_model_obj, "feature_importances_"):
             importances = best_model_obj.feature_importances_
