@@ -96,4 +96,4 @@ def render_progress_tab():
             if session.get("weak_concepts"):
                 st.markdown("**Weak areas:** " + ", ".join(session["weak_concepts"]))
             if session.get("summary"):
-                st.info(session["summary"])
+                st.info(session["summary"])  
