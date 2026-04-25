@@ -55,54 +55,228 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ── Anime mascot SVG ──────────────────────────────────────────────────────
+MASCOT_SVG = """
+<svg width="64" height="64" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="36" cy="32" rx="18" ry="19" fill="#E6F1FB"/>
+  <path d="M18 28 Q16 14 28 12 Q36 8 44 12 Q56 14 54 28" fill="#185FA5"/>
+  <path d="M18 28 Q14 20 20 16" stroke="#185FA5" stroke-width="3" stroke-linecap="round"/>
+  <path d="M54 28 Q58 20 52 16" stroke="#185FA5" stroke-width="3" stroke-linecap="round"/>
+  <path d="M26 10 Q28 4 32 8" fill="#185FA5"/>
+  <path d="M36 8 Q38 2 42 6" fill="#185FA5"/>
+  <ellipse cx="28" cy="31" rx="5" ry="6" fill="white"/>
+  <ellipse cx="44" cy="31" rx="5" ry="6" fill="white"/>
+  <circle cx="29" cy="32" r="3.5" fill="#185FA5"/>
+  <circle cx="45" cy="32" r="3.5" fill="#185FA5"/>
+  <circle cx="30" cy="31" r="1.2" fill="white"/>
+  <circle cx="46" cy="31" r="1.2" fill="white"/>
+  <path d="M23 27 Q25 25 27 27" stroke="#185FA5" stroke-width="1" fill="none" stroke-linecap="round"/>
+  <path d="M41 27 Q43 25 45 27" stroke="#185FA5" stroke-width="1" fill="none" stroke-linecap="round"/>
+  <ellipse cx="21" cy="37" rx="4" ry="2.5" fill="#F4C0D1" opacity="0.7"/>
+  <ellipse cx="51" cy="37" rx="4" ry="2.5" fill="#F4C0D1" opacity="0.7"/>
+  <path d="M30 40 Q36 45 42 40" stroke="#378ADD" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <rect x="30" y="18" width="12" height="7" rx="1.5" fill="#1D9E75" opacity="0.85"/>
+  <rect x="31.5" y="21" width="1.5" height="3" fill="white"/>
+  <rect x="34" y="19.5" width="1.5" height="4.5" fill="white"/>
+  <rect x="36.5" y="20.5" width="1.5" height="3.5" fill="white"/>
+  <rect x="39" y="20" width="1.5" height="4" fill="white"/>
+  <ellipse cx="18" cy="32" rx="3" ry="4" fill="#E6F1FB"/>
+  <ellipse cx="54" cy="32" rx="3" ry="4" fill="#E6F1FB"/>
+  <path d="M18 50 Q20 44 36 43 Q52 44 54 50 L56 58 Q36 62 16 58 Z" fill="#185FA5"/>
+  <path d="M30 44 L36 50 L42 44" stroke="#E6F1FB" stroke-width="1.5" fill="none"/>
+  <rect x="31" y="52" width="10" height="5" rx="1" fill="#1D9E75"/>
+  <text x="36" y="56.5" font-size="4.5" fill="white" text-anchor="middle" font-weight="bold" font-family="Arial">DF</text>
+</svg>
+"""
+
+MASCOT_SMALL = """
+<svg width="28" height="28" viewBox="0 0 72 72" fill="none">
+  <ellipse cx="36" cy="32" rx="18" ry="19" fill="#E6F1FB"/>
+  <path d="M18 28 Q16 14 28 12 Q36 8 44 12 Q56 14 54 28" fill="#185FA5"/>
+  <ellipse cx="28" cy="31" rx="5" ry="6" fill="white"/>
+  <ellipse cx="44" cy="31" rx="5" ry="6" fill="white"/>
+  <circle cx="29" cy="32" r="3.5" fill="#185FA5"/>
+  <circle cx="45" cy="32" r="3.5" fill="#185FA5"/>
+  <circle cx="30" cy="31" r="1.2" fill="white"/>
+  <circle cx="46" cy="31" r="1.2" fill="white"/>
+  <ellipse cx="21" cy="37" rx="4" ry="2.5" fill="#F4C0D1" opacity="0.7"/>
+  <ellipse cx="51" cy="37" rx="4" ry="2.5" fill="#F4C0D1" opacity="0.7"/>
+  <path d="M30 40 Q36 45 42 40" stroke="#378ADD" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M18 50 Q20 44 36 43 Q52 44 54 50 L56 58 Q36 62 16 58 Z" fill="#185FA5"/>
+</svg>
+"""
+
 # ── CSS ────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
+    /* ── Base ── */
     .stApp { background-color:#0D1117; color:#F0F6FC; }
-    section[data-testid="stSidebar"] { background-color:#161B22; }
+    section[data-testid="stSidebar"] { background-color:#0D1117; border-right:1px solid #1E293B; }
     section[data-testid="stSidebar"] * { color:#F0F6FC !important; }
-    .tutor-title { font-size:2.5rem; font-weight:900; color:#02C39A; margin-bottom:0; }
-    .tutor-sub   { font-size:1rem; color:#8B949E; margin-top:0; font-style:italic; }
-    .lesson-box  { background:#161B22; border-left:4px solid #02C39A;
-                   border-radius:0 8px 8px 0; padding:1.2rem 1.5rem;
-                   margin:0.8rem 0; color:#E6EDF3; line-height:1.8; }
-    .step-badge  { background:#028090; color:white; border-radius:20px;
-                   padding:3px 14px; font-size:0.85rem; font-weight:bold;
-                   display:inline-block; margin-bottom:8px; }
-    .metric-card { background:#161B22; border:1px solid #028090;
-                   border-radius:10px; padding:.9rem 1rem; }
-    .metric-val  { font-size:1.8rem; font-weight:800; color:#02C39A; }
-    .metric-lbl  { font-size:.8rem; color:#8B949E; }
-    .quiz-box    { background:#0D2137; border:1px solid #028090;
-                   border-radius:10px; padding:1.2rem; margin:0.8rem 0; }
-    .quiz-q      { font-size:1rem; font-weight:700; color:#E6EDF3; margin-bottom:0.8rem; }
-    .correct     { background:#166534; border-radius:8px; padding:0.6rem 1rem;
-                   color:#86EFAC; font-weight:bold; }
-    .wrong       { background:#7F1D1D; border-radius:8px; padding:0.6rem 1rem;
-                   color:#FCA5A5; font-weight:bold; }
-    .explanation { background:#1C2333; border-radius:8px; padding:0.8rem;
-                   color:#94A3B8; font-size:0.9rem; margin-top:0.5rem; }
-    .chat-user   { background:#1C2333; border-radius:12px 12px 2px 12px;
-                   padding:0.8rem 1rem; margin:0.4rem 0; color:#E6EDF3;
-                   max-width:80%; float:right; clear:both; }
-    .chat-tutor  { background:#161B22; border:1px solid #028090;
-                   border-radius:2px 12px 12px 12px;
-                   padding:0.8rem 1rem; margin:0.4rem 0; color:#E6EDF3;
-                   max-width:85%; float:left; clear:both; }
-    .chat-wrap   { overflow:hidden; margin-bottom:0.5rem; }
-    .audit-entry { background:#161B22; border-left:3px solid #028090;
-                   padding:5px 12px; margin:3px 0; border-radius:0 6px 6px 0;
-                   font-size:.85rem; font-family:monospace; color:#C9D1D9; }
-    .automl-best { background:linear-gradient(135deg,#028090,#02C39A);
-                   border-radius:10px; padding:1rem; color:white; text-align:center; }
-    .automl-score { font-size:2rem; font-weight:900; }
     #MainMenu{visibility:hidden} footer{visibility:hidden}
-    .stButton>button { background-color:#02C39A; color:#0D1117;
-                       font-weight:700; border:none; border-radius:6px; }
-    .stButton>button:hover { background-color:#028090; color:white; }
-    .stTabs [data-baseweb="tab"] { color:#8B949E; }
-    .stTabs [aria-selected="true"] { color:#02C39A !important;
-                                      border-bottom-color:#02C39A !important; }
+
+    /* ── Mascot header ── */
+    .df-header {
+        display:flex; align-items:center; gap:12px;
+        padding:1rem 0 0.5rem;
+    }
+    .df-header-text h1 {
+        font-size:1.6rem; font-weight:800; color:#02C39A;
+        margin:0; line-height:1.2;
+    }
+    .df-header-text p {
+        font-size:0.82rem; color:#8B949E; margin:0;
+    }
+
+    /* ── Chat bubbles ── */
+    .chat-wrap   { overflow:hidden; margin-bottom:0.6rem; }
+    .chat-user   {
+        background:#185FA5; border-radius:18px 18px 4px 18px;
+        padding:0.75rem 1rem; margin:0.3rem 0; color:white;
+        max-width:78%; float:right; clear:both;
+        font-size:0.93rem; line-height:1.6;
+    }
+    .chat-tutor  {
+        background:#161B22; border:1px solid #1E293B;
+        border-radius:4px 18px 18px 18px;
+        padding:0.75rem 1rem; margin:0.3rem 0; color:#E6EDF3;
+        max-width:82%; float:left; clear:both;
+        font-size:0.93rem; line-height:1.6;
+    }
+    .chat-bot-row {
+        display:flex; align-items:flex-start; gap:8px; margin:0.3rem 0; clear:both;
+    }
+    .chat-bot-avatar {
+        flex-shrink:0; margin-top:2px;
+    }
+    .chat-user-label {
+        float:right; clear:both;
+        font-size:0.72rem; color:#8B949E;
+        margin-bottom:2px; margin-right:4px;
+    }
+
+    /* ── Cards and components ── */
+    .lesson-box {
+        background:#111827; border-left:3px solid #02C39A;
+        border-radius:0 12px 12px 0; padding:1.1rem 1.4rem;
+        margin:0.7rem 0; color:#E6EDF3; line-height:1.85;
+        font-size:0.93rem;
+    }
+    .metric-card {
+        background:#111827; border:1px solid #1E293B;
+        border-radius:12px; padding:.85rem 1rem;
+        transition: border-color 0.2s;
+    }
+    .metric-card:hover { border-color:#028090; }
+    .metric-val  { font-size:1.7rem; font-weight:800; color:#02C39A; }
+    .metric-lbl  { font-size:.78rem; color:#8B949E; margin-top:2px; }
+
+    .step-badge {
+        background:#028090; color:white; border-radius:20px;
+        padding:3px 14px; font-size:0.82rem; font-weight:700;
+        display:inline-block; margin-bottom:8px; letter-spacing:0.3px;
+    }
+
+    /* ── Quiz ── */
+    .quiz-box {
+        background:#111827; border:1px solid #1E293B;
+        border-radius:12px; padding:1.1rem; margin:0.7rem 0;
+    }
+    .quiz-q { font-size:0.95rem; font-weight:700; color:#E6EDF3; margin-bottom:0.7rem; }
+    .correct {
+        background:#052e16; border:1px solid #166534;
+        border-radius:10px; padding:0.6rem 1rem;
+        color:#86EFAC; font-weight:600; font-size:0.9rem;
+    }
+    .wrong {
+        background:#2d0a0a; border:1px solid #7F1D1D;
+        border-radius:10px; padding:0.6rem 1rem;
+        color:#FCA5A5; font-weight:600; font-size:0.9rem;
+    }
+    .explanation {
+        background:#1a2234; border-radius:10px; padding:0.75rem 1rem;
+        color:#94A3B8; font-size:0.88rem; margin-top:0.5rem;
+        line-height:1.7;
+    }
+
+    /* ── Audit trail ── */
+    .audit-entry {
+        background:#111827; border-left:2px solid #028090;
+        padding:5px 12px; margin:3px 0; border-radius:0 8px 8px 0;
+        font-size:.82rem; font-family:monospace; color:#94A3B8;
+    }
+
+    /* ── AutoML ── */
+    .automl-best {
+        background:linear-gradient(135deg,#0f4c6e,#0a6e56);
+        border:1px solid #02C39A;
+        border-radius:12px; padding:1rem; color:white; text-align:center;
+    }
+    .automl-score { font-size:1.9rem; font-weight:900; }
+
+    /* ── Buttons ── */
+    .stButton>button {
+        background-color:#02C39A; color:#0D1117;
+        font-weight:700; border:none; border-radius:10px;
+        padding:0.45rem 1.2rem; transition: all 0.2s;
+    }
+    .stButton>button:hover {
+        background-color:#01a882; color:white;
+        transform: translateY(-1px);
+    }
+
+    /* ── Tabs ── */
+    .stTabs [data-baseweb="tab"] {
+        color:#8B949E; font-size:0.88rem;
+        padding:0.5rem 0.8rem;
+    }
+    .stTabs [aria-selected="true"] {
+        color:#02C39A !important;
+        border-bottom-color:#02C39A !important;
+        font-weight:600;
+    }
+
+    /* ── Suggestion chips ── */
+    .sug-chip {
+        display:inline-block; padding:5px 14px;
+        background:#111827; border:1px solid #1E293B;
+        border-radius:20px; font-size:0.82rem; color:#8B949E;
+        margin:3px; cursor:pointer; transition:all 0.15s;
+    }
+    .sug-chip:hover {
+        background:#185FA5; border-color:#185FA5; color:white;
+    }
+
+    /* ── Input area ── */
+    .stTextInput>div>div>input {
+        border-radius:12px !important;
+        border-color:#1E293B !important;
+        background:#111827 !important;
+        color:#F0F6FC !important;
+        padding:0.6rem 1rem !important;
+    }
+    .stTextInput>div>div>input:focus {
+        border-color:#028090 !important;
+        box-shadow: 0 0 0 2px rgba(2,128,144,0.15) !important;
+    }
+
+    /* ── Agent badges ── */
+    .agent-badge {
+        display:inline-block; padding:2px 10px;
+        background:#052e16; border:1px solid #166534;
+        border-radius:20px; font-size:0.75rem; color:#86EFAC;
+        font-weight:600; margin:2px;
+    }
+    .declined-badge {
+        display:inline-block; padding:2px 10px;
+        background:#2d0a0a; border:1px solid #7F1D1D;
+        border-radius:20px; font-size:0.75rem; color:#FCA5A5;
+        font-weight:600; margin:2px;
+    }
+
+    /* ── Tutor sub-header ── */
+    .tutor-title { font-size:2.2rem; font-weight:900; color:#02C39A; margin-bottom:0; }
+    .tutor-sub   { font-size:0.9rem; color:#8B949E; margin-top:2px; font-style:italic; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -262,8 +436,13 @@ def render_quiz(questions: list, prefix: str):
 # SIDEBAR — no API key inputs, keys come from .env
 # ══════════════════════════════════════════════════════════════════════════
 with st.sidebar:
-    st.markdown("## 🎓 DataForge Tutor")
-    st.markdown("*Your AI Data Science Mentor*")
+    st.markdown(
+        f'<div style="text-align:center;padding:0.5rem 0 0.8rem">'
+        f'{MASCOT_SVG}'
+        f'<div style="font-size:1.1rem;font-weight:800;color:#02C39A;margin-top:6px">DataForge</div>'
+        f'<div style="font-size:0.75rem;color:#8B949E">AI Data Science Tutor</div>'
+        f'</div>',
+        unsafe_allow_html=True)
     st.divider()
 
     # ── Mode toggle ────────────────────────────────────────────────────
@@ -352,13 +531,24 @@ def _render_chat_mode(level, use_gpt, gpt_client, use_live):
     """Renders the full conversational chatbot interface."""
 
     # ── Upload section ─────────────────────────────────────────────────
-    st.markdown("### 📂 Upload Your Dataset")
+    # ── Upload header ─────────────────────────────────────────────────
+    st.markdown(
+        '<div style="background:#111827;border:1.5px dashed #028090;'
+        'border-radius:14px;padding:1.2rem 1.5rem;margin-bottom:1rem">'
+        '<div style="font-size:1rem;font-weight:700;color:#02C39A;margin-bottom:4px">'
+        '📂 Upload Your Dataset</div>'
+        '<div style="font-size:0.82rem;color:#8B949E">'
+        'CSV or Excel · any domain · up to 200MB</div>'
+        '</div>',
+        unsafe_allow_html=True)
     col_up1, col_up2 = st.columns([2, 1])
     with col_up1:
         uploaded_chat = st.file_uploader(
-            "Drop a CSV or Excel file here:",
-            type=["csv", "xlsx", "xls"], key="chat_uploader")
+            "Drop your file here",
+            type=["csv", "xlsx", "xls"], key="chat_uploader",
+            label_visibility="collapsed")
     with col_up2:
+        st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
         use_demo_chat = st.checkbox("🎯 Use demo dataset", key="chat_demo")
 
     if use_demo_chat:
@@ -450,12 +640,18 @@ def _render_chat_mode(level, use_gpt, gpt_client, use_live):
 
         if msg["role"] == "user":
             st.markdown(
-                f'<div class="chat-wrap"><div class="chat-user">🧑‍🎓 {msg["text"]}</div></div>',
+                f'<div class="chat-wrap">'
+                f'<div class="chat-user-label">You</div>'
+                f'<div class="chat-user">{msg["text"]}</div>'
+                f'</div>',
                 unsafe_allow_html=True)
 
         elif msg["role"] == "bot":
             st.markdown(
-                f'<div class="chat-wrap"><div class="chat-tutor">🤖 {msg["text"]}</div></div>',
+                f'<div class="chat-bot-row">'
+                f'<div class="chat-bot-avatar">{MASCOT_SMALL}</div>'
+                f'<div class="chat-tutor">{msg["text"]}</div>'
+                f'</div>',
                 unsafe_allow_html=True)
 
             # Agent badges
@@ -744,11 +940,14 @@ def _render_chat_mode(level, use_gpt, gpt_client, use_live):
 # ══════════════════════════════════════════════════════════════════════════
 # HEADER
 # ══════════════════════════════════════════════════════════════════════════
-st.markdown('<p class="tutor-title">🎓 DataForge — AI Data Science Tutor</p>',
-            unsafe_allow_html=True)
-st.markdown('<p class="tutor-sub">Your conversational AI data science mentor — '
-            'upload a dataset and tell me what you want to learn</p>',
-            unsafe_allow_html=True)
+st.markdown(
+    f'<div class="df-header">'
+    f'{MASCOT_SVG}'
+    f'<div class="df-header-text">'
+    f'<h1>DataForge</h1>'
+    f'<p>Your AI data science tutor — upload a dataset and tell me what you want to learn</p>'
+    f'</div></div>',
+    unsafe_allow_html=True)
 st.divider()
 
 level    = st.session_state["level"]
@@ -1820,10 +2019,65 @@ if score > 0:
 
 # ── Certificate section ────────────────────────────────────────────────────
 st.divider()
-st.markdown("### 🎓 Your Certificate")
 steps_done = list(set(st.session_state["steps_completed"]))
 quiz_total = len([k for k in st.session_state["quiz_answers"]]) * 10
 
+# Celebration when all steps complete
+if len(steps_done) >= 6 and st.session_state["score"] >= 5:
+    st.markdown("""
+    <style>
+    @keyframes fall {
+        0%   { transform:translateY(-20px) rotate(0deg); opacity:1; }
+        100% { transform:translateY(100vh) rotate(720deg); opacity:0; }
+    }
+    .confetti-piece {
+        position:fixed; width:10px; height:10px;
+        animation:fall 3s ease-in forwards;
+        pointer-events:none; z-index:9999;
+    }
+    </style>
+    <div id="confetti-root" style="position:fixed;top:0;left:0;width:100%;height:0;pointer-events:none;z-index:9999;overflow:visible"></div>
+    <script>
+    (function(){
+        const colors=["#02C39A","#185FA5","#F4C0D1","#FAC775","#86EFAC"];
+        const root=document.getElementById("confetti-root");
+        if(!root)return;
+        for(let i=0;i<80;i++){
+            const p=document.createElement("div");
+            p.className="confetti-piece";
+            p.style.left=Math.random()*100+"vw";
+            p.style.top="-10px";
+            p.style.background=colors[Math.floor(Math.random()*colors.length)];
+            p.style.borderRadius=Math.random()>.5?"50%":"2px";
+            p.style.width=(8+Math.random()*8)+"px";
+            p.style.height=(8+Math.random()*8)+"px";
+            p.style.animationDelay=Math.random()*1.5+"s";
+            p.style.animationDuration=(2+Math.random()*2)+"s";
+            root.appendChild(p);
+        }
+    })();
+    </script>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background:#0a2a1e;border:1px solid #02C39A;
+                border-radius:16px;padding:1.5rem;text-align:center;margin:1rem 0">
+        <div style="font-size:2.8rem;margin-bottom:8px">🎓</div>
+        <div style="font-size:1.5rem;font-weight:900;color:#02C39A;margin-bottom:6px">
+            Pipeline Complete!
+        </div>
+        <div style="color:#E6EDF3;font-size:0.95rem;margin-bottom:4px">
+            You have completed the full DataForge data science pipeline.
+        </div>
+        <div style="color:#8B949E;font-size:0.85rem">
+            Your certificate is ready below ↓
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    speak(get_narration("certificate"),
+          label="🏆 Hear Your Congratulations", key_suffix="cert_narration")
+
+st.markdown("### 🎓 Your Certificate")
 show_certificate_section(
     st=st,
     student_name=st.session_state.get("student_name", ""),
@@ -1833,8 +2087,3 @@ show_certificate_section(
     dataset_name=getattr(df_raw, "name", "your dataset") if df_raw is not None else "your dataset",
     steps_completed=steps_done,
 )
-
-# Speak congratulations when all done
-if len(steps_done) >= 6 and st.session_state["score"] >= 5:
-    speak(get_narration("certificate"),
-          label="🏆 Hear Your Congratulations", key_suffix="cert_narration")
