@@ -6,6 +6,10 @@ import pandas as pd
 import numpy as np
 import os
 import time
+import io
+import json
+import zipfile
+import re
 from dotenv import load_dotenv
 
 # ── Load keys from .env once at startup ───────────────────────────────────
@@ -32,6 +36,7 @@ from agents.code_export      import generate_notebook, notebook_to_bytes
 from agents.bias_report      import run_bias_audit, render_bias_report
 from agents.multi_dataset    import compare_datasets
 from agents.kaggle_datasets  import recommend_datasets, render_dataset_cards
+from agents.eda_story         import generate_eda_story
 # student_tracker removed
 
 # ── Page config ────────────────────────────────────────────────────────────
@@ -481,6 +486,20 @@ with t1:
     n_dupes   = sum(1 for e in audit if "duplicate" in e.lower())
     n_missing = sum(1 for e in audit if "missing" in e.lower())
 
+    # Before-vs-after cleaning metrics for transparency
+    raw_rows = int(df_raw.shape[0]) if df_raw is not None else int(cleaned.shape[0])
+    raw_cols = int(df_raw.shape[1]) if df_raw is not None else int(cleaned.shape[1])
+    clean_rows = int(cleaned.shape[0])
+    clean_cols = int(cleaned.shape[1])
+
+    rows_removed = max(raw_rows - clean_rows, 0)
+    cols_removed = max(raw_cols - clean_cols, 0)
+    missing_before = int(df_raw.isna().sum().sum()) if df_raw is not None else int(cleaned.isna().sum().sum())
+    missing_after = int(cleaned.isna().sum().sum())
+    missing_fixed = max(missing_before - missing_after, 0)
+    dupes_before = int(df_raw.duplicated().sum()) if df_raw is not None else int(cleaned.duplicated().sum())
+    dupes_after = int(cleaned.duplicated().sum())
+
     st.markdown("### 📖 Understanding Your Data Cleaning Results")
 
     if use_gpt and gpt_client:
@@ -500,6 +519,20 @@ with t1:
     st.markdown("### 📋 What DataForge Did to Your Data")
     for entry in audit:
         st.markdown(f'<div class="audit-entry">{entry}</div>', unsafe_allow_html=True)
+
+    st.markdown("### 🔍 What Changed After Cleaning? (Diff View)")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Rows Removed", f"{rows_removed:,}", delta=f"{raw_rows:,} → {clean_rows:,}")
+    c2.metric("Columns Removed", f"{cols_removed:,}", delta=f"{raw_cols:,} → {clean_cols:,}")
+    c3.metric("Missing Cells Fixed", f"{missing_fixed:,}", delta=f"{missing_before:,} → {missing_after:,}")
+
+    d1, d2 = st.columns(2)
+    d1.metric("Duplicates Before → After", f"{dupes_before:,} → {dupes_after:,}")
+    d2.metric("Missing Before → After", f"{missing_before:,} → {missing_after:,}")
+
+    st.caption(
+        "This snapshot shows exactly what changed during cleaning so you can verify and trust each transformation."
+    )
 
     if use_gpt and gpt_client:
         st.markdown("### 💡 GPT-4 Explanation")
@@ -549,6 +582,42 @@ with t1:
 # TAB 2 — ANALYSIS
 # ════════════════════════════════════════════════════════════════════════════
 with t2:
+    st.markdown("### ✨ One-Click EDA Story")
+    st.caption(
+        "Generate a short narrative of data quality, key patterns, and practical next steps."
+    )
+
+    if st.button("✨ Generate EDA Story", key="eda_story_btn"):
+        with st.spinner("Building your EDA story..."):
+            story_text, story_mode, story_detail = generate_eda_story(
+                cleaned,
+                insights,
+                audit,
+                use_gpt=use_gpt,
+                client=gpt_client,
+            )
+        st.session_state["eda_story_text"] = story_text
+        st.session_state["eda_story_mode"] = story_mode
+        st.session_state["eda_story_detail"] = story_detail
+
+    if st.session_state.get("eda_story_text"):
+        mode = st.session_state.get("eda_story_mode", "local")
+        detail = st.session_state.get("eda_story_detail", "")
+        if mode == "gpt":
+            st.success("Source: GPT")
+        else:
+            st.info("Source: Local fallback")
+        if detail:
+            st.caption(f"Generation detail: {detail}")
+        lesson_box(st.session_state["eda_story_text"])
+        speak(
+            st.session_state["eda_story_text"],
+            label="Listen to EDA Story",
+            key_suffix="eda_story",
+        )
+
+    st.divider()
+
     if use_gpt and gpt_client:
         if "lesson_analysis" not in st.session_state:
             with st.spinner("GPT-4 is personalising your statistics lesson..."):
@@ -957,6 +1026,99 @@ with t6:
                 key="dl_notebook"
             )
             st.success("✅ Notebook ready! Open in Jupyter or VS Code to run it.")
+
+    st.divider()
+    st.markdown("### 📦 Export Pack (.zip)")
+    st.markdown(
+        "Click **Build Export Pack** to generate the zip contents. "
+        "After that, the **Export Pack (.zip)** button appears."
+    )
+
+    if st.button("🛠 Build Export Pack", key="build_export_pack_btn"):
+        with st.spinner("Building export pack..."):
+            buffer = io.BytesIO()
+            with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                # Core outputs
+                zf.writestr("report/dataforge_report.md", report or "")
+                zf.writestr(
+                    "eda/dataforge_eda_story.md",
+                    st.session_state.get(
+                        "eda_story_text",
+                        "EDA Story was not generated in this session.",
+                    ),
+                )
+                zf.writestr("logs/cleaning_audit_log.txt", "\n".join(audit))
+                zf.writestr("insights/insights.json", json.dumps(insights, indent=2, default=str))
+
+                # Raw + cleaned snapshots
+                if df_raw is not None:
+                    zf.writestr("data/raw_dataset.csv", df_raw.to_csv(index=False))
+                zf.writestr("data/cleaned_dataset.csv", cleaned.to_csv(index=False))
+
+                # Diff summary
+                if df_raw is not None:
+                    diff_summary = {
+                        "rows_before": int(df_raw.shape[0]),
+                        "rows_after": int(cleaned.shape[0]),
+                        "rows_removed": max(int(df_raw.shape[0]) - int(cleaned.shape[0]), 0),
+                        "columns_before": int(df_raw.shape[1]),
+                        "columns_after": int(cleaned.shape[1]),
+                        "columns_removed": max(int(df_raw.shape[1]) - int(cleaned.shape[1]), 0),
+                        "missing_before": int(df_raw.isna().sum().sum()),
+                        "missing_after": int(cleaned.isna().sum().sum()),
+                        "missing_fixed": max(
+                            int(df_raw.isna().sum().sum()) - int(cleaned.isna().sum().sum()), 0
+                        ),
+                        "duplicates_before": int(df_raw.duplicated().sum()),
+                        "duplicates_after": int(cleaned.duplicated().sum()),
+                    }
+                else:
+                    diff_summary = {
+                        "rows_before": int(cleaned.shape[0]),
+                        "rows_after": int(cleaned.shape[0]),
+                        "rows_removed": 0,
+                        "columns_before": int(cleaned.shape[1]),
+                        "columns_after": int(cleaned.shape[1]),
+                        "columns_removed": 0,
+                        "missing_before": int(cleaned.isna().sum().sum()),
+                        "missing_after": int(cleaned.isna().sum().sum()),
+                        "missing_fixed": 0,
+                        "duplicates_before": int(cleaned.duplicated().sum()),
+                        "duplicates_after": int(cleaned.duplicated().sum()),
+                    }
+                zf.writestr("diff/diff_summary.json", json.dumps(diff_summary, indent=2))
+
+                # Charts as lightweight HTML wrappers
+                for idx, chart in enumerate(results.get("charts", []), start=1):
+                    title = chart.get("title", f"chart_{idx}")
+                    safe = re.sub(r"[^a-zA-Z0-9_-]+", "_", title).strip("_") or f"chart_{idx}"
+                    img_b64 = chart.get("b64", "")
+                    html = (
+                        f"<html><body style='background:#0D1117;color:#E6EDF3;font-family:sans-serif;'>"
+                        f"<h2>{title}</h2>"
+                        f"<img alt='{title}' src='data:image/png;base64,{img_b64}' "
+                        f"style='max-width:100%;height:auto;border:1px solid #2b3440;border-radius:8px;'/>"
+                        f"</body></html>"
+                    )
+                    zf.writestr(f"charts/{idx:02d}_{safe}.html", html)
+
+            buffer.seek(0)
+            st.session_state["export_pack_bytes"] = buffer.getvalue()
+
+        st.success("✅ Export pack ready.")
+
+    if st.session_state.get("export_pack_bytes"):
+        st.download_button(
+            "⬇️ Export Pack (.zip)",
+            st.session_state["export_pack_bytes"],
+            file_name="dataforge_export_pack.zip",
+            mime="application/zip",
+            key="export_pack_download",
+        )
+        st.caption(
+            "Includes report, EDA story, chart HTML files, diff summary, cleaning log, "
+            "insights JSON, and data snapshots."
+        )
 
     # Multi-dataset comparison section
     if st.session_state.get("df2") is not None and df_raw is not None:
