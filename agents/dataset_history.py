@@ -1,192 +1,176 @@
-# agents/dataset_history.py — Upgraded Dataset History Agent
-
+# agents/dataset_history.py
 import streamlit as st
-import pandas as pd
 import json
 import os
 from datetime import datetime
 
-MAX_HISTORY = 10
 HISTORY_FILE = "data/dataset_history.json"
 
 
-# ── PERSISTENCE HELPERS ──
-
-def _load_all_history() -> dict:
-    if not os.path.exists(HISTORY_FILE):
-        return {}
-    try:
-        with open(HISTORY_FILE, "r") as f:
+def _load_history():
+    os.makedirs("data", exist_ok=True)
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE) as f:
             return json.load(f)
-    except Exception:
-        return {}
+    return {}
 
 
-def _save_all_history(data: dict) -> None:
+def _save_history(history):
     os.makedirs("data", exist_ok=True)
     with open(HISTORY_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+        json.dump(history, f, indent=2, default=str)
 
 
-def _get_user_history(username: str) -> list:
-    return _load_all_history().get(username, [])
+def save_dataset_session(username, dataset_name, shape,
+                          key_findings, ai_summary=""):
+    history = _load_history()
+    if username not in history:
+        history[username] = {"sessions": []}
+    history[username]["sessions"].append({
+        "dataset":      dataset_name,
+        "rows":         shape[0],
+        "cols":         shape[1],
+        "key_findings": key_findings[:5],
+        "ai_summary":   ai_summary,
+        "timestamp":    datetime.now().strftime("%Y-%m-%d %H:%M"),
+    })
+    _save_history(history)
 
 
-def _set_user_history(username: str, history: list) -> None:
-    all_history = _load_all_history()
-    all_history[username] = history
-    _save_all_history(all_history)
+def get_user_history(username):
+    history = _load_history()
+    return history.get(username, {}).get("sessions", [])
 
 
-# ── SAVE TO HISTORY ──
-
-def save_to_history(st, df: pd.DataFrame, filename: str) -> None:
-    """
-    Call this immediately after a user uploads a dataset.
-    Saves to both session state and disk (if logged in).
-    """
-    username = st.session_state.get("username", None)
-
-    entry = {
-        "filename": filename,
-        "rows": df.shape[0],
-        "cols": df.shape[1],
-        "columns": df.columns.tolist()[:10],
-        "timestamp": datetime.now().strftime("%d %b %Y, %H:%M"),
-        "preview": df.head(3).to_dict(orient="records"),
-        "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
-        "missing": int(df.isnull().sum().sum()),
-    }
-
-    # ── Save to session state ──
-    if "dataset_history" not in st.session_state:
-        st.session_state["dataset_history"] = []
-
-    history = st.session_state["dataset_history"]
-    if not history or history[0]["filename"] != filename:
-        st.session_state["dataset_history"] = ([entry] + history)[:MAX_HISTORY]
-
-    # ── Save to disk if logged in ──
-    if username:
-        disk_history = _get_user_history(username)
-        if not disk_history or disk_history[0]["filename"] != filename:
-            _set_user_history(username, ([entry] + disk_history)[:MAX_HISTORY])
-
-
-# ── AI SUMMARY ──
-
-def _generate_ai_summary(entry: dict) -> str:
+def generate_dataset_summary(client, df, insights, audit_log):
+    if not client:
+        return _template_summary(df, insights, audit_log)
+    import pandas as pd
+    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+    correlations = insights.get("strong_correlations", [])
+    skewed       = insights.get("skewed_columns", {})
+    corr_text = (", ".join(f"{p['col_a']}↔{p['col_b']}(r={p['correlation']})"
+                           for p in correlations[:2])
+                 if correlations else "no strong correlations")
+    prompt = f"""Summarise this dataset in 3 sentences for a student.
+Dataset: {df.shape[0]} rows x {df.shape[1]} columns
+Numeric columns: {numeric_cols[:6]}
+Correlations: {corr_text}
+Cleaning steps: {len(audit_log)} transformations
+Skewed: {list(skewed.keys())[:3] if skewed else 'none'}
+Write: (1) what dataset contains, (2) most interesting finding, (3) what to explore next."""
     try:
-        import anthropic
-        client = anthropic.Anthropic()
-
-        prompt = (
-            f"A student uploaded a dataset called '{entry['filename']}' with "
-            f"{entry['rows']} rows and {entry['cols']} columns. "
-            f"The columns are: {', '.join(entry['columns'])}. "
-            f"There are {entry['missing']} missing values total. "
-            f"Write a 3-sentence plain English summary of what this dataset is likely about, "
-            f"what a student could learn from it, and one thing to watch out for. "
-            f"Be friendly and beginner-friendly. No markdown, just plain text."
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=200, temperature=0.5
         )
-
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=200,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.content[0].text
-    except Exception:
-        return "AI summary unavailable. Check your API key is configured."
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"Summary error: {e}")
+        return _template_summary(df, insights, audit_log)
 
 
-# ── MAIN PANEL ──
-
-def render_history_panel(st) -> None:
-    """
-    Renders the full dataset history panel.
-    Uses disk history if logged in, otherwise falls back to session state.
-    """
-    st.header("🗂️ Dataset History")
-    st.markdown("Your previously uploaded datasets — pick up where you left off.")
-
-    username = st.session_state.get("username", None)
-
-    # Load history — disk if logged in, session if not
-    if username:
-        history = _get_user_history(username)
-        st.caption(f"Showing history for **{username}** — saved across sessions.")
+def _template_summary(df, insights, audit_log):
+    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+    correlations = insights.get("strong_correlations", [])
+    finding = ""
+    if correlations:
+        p = correlations[0]
+        finding = (f"The most notable finding is a "
+                   f"{'positive' if p['correlation']>0 else 'negative'} "
+                   f"correlation (r={p['correlation']}) between "
+                   f"{p['col_a']} and {p['col_b']}.")
     else:
-        history = st.session_state.get("dataset_history", [])
-        st.info("💡 Log in to save your dataset history across sessions.")
+        finding = "No strong correlations were found between numeric columns."
+    return (f"This dataset contains {df.shape[0]:,} rows and {df.shape[1]} columns "
+            f"with {len(numeric_cols)} numeric features. "
+            f"{finding} "
+            f"DataForge applied {len(audit_log)} cleaning transformations.")
 
-    if not history:
-        st.warning("No dataset history yet. Upload a dataset to get started.")
+
+def render_conversation_history():
+    chat_history = st.session_state.get("chat_history", [])
+    if not chat_history:
+        st.info("No conversation history yet. Ask the tutor a question in the "
+                "💬 Ask the Tutor tab.")
         return
+    st.markdown(f"**{len(chat_history) // 2} interaction(s) this session**")
+    st.divider()
+    interactions = []
+    for i in range(0, len(chat_history) - 1, 2):
+        if (chat_history[i]["role"] == "user" and
+                chat_history[i+1]["role"] == "tutor"):
+            interactions.append((chat_history[i], chat_history[i+1]))
+    for idx, (user_msg, tutor_msg) in enumerate(interactions):
+        with st.expander(
+            f"Q{idx+1}: {user_msg['text'][:60]}"
+            f"{'...' if len(user_msg['text'])>60 else ''}",
+            expanded=(idx == len(interactions)-1)
+        ):
+            st.markdown(
+                f'<div style="background:#1C2333;border-radius:10px;'
+                f'padding:.8rem 1rem;margin-bottom:.5rem;color:#E6EDF3">'
+                f'🧑‍🎓 {user_msg["text"]}</div>',
+                unsafe_allow_html=True)
+            st.markdown(
+                f'<div style="background:#161B22;border:1px solid #028090;'
+                f'border-radius:10px;padding:.8rem 1rem;color:#E6EDF3">'
+                f'🎓 {tutor_msg["text"]}</div>',
+                unsafe_allow_html=True)
+            if tutor_msg.get("code"):
+                with st.expander("📋 Code snippet"):
+                    st.code(tutor_msg["code"], language="python")
+            bookmark_key = f"bookmark_{idx}"
+            bookmarks = st.session_state.get("bookmarks", [])
+            is_bookmarked = idx in bookmarks
+            if st.button(
+                "🔖 Bookmarked" if is_bookmarked else "🔖 Bookmark this",
+                key=bookmark_key
+            ):
+                if is_bookmarked:
+                    bookmarks.remove(idx)
+                else:
+                    bookmarks.append(idx)
+                st.session_state["bookmarks"] = bookmarks
+                st.rerun()
+    bookmarks = st.session_state.get("bookmarks", [])
+    if bookmarks:
+        st.divider()
+        st.markdown("#### 🔖 Your Bookmarks")
+        for idx in bookmarks:
+            if idx < len(interactions):
+                user_msg, tutor_msg = interactions[idx]
+                st.markdown(f"**Q{idx+1}:** {user_msg['text'][:80]}...")
+                st.markdown(
+                    f'<div style="background:#0D2137;border-left:3px solid #02C39A;'
+                    f'padding:.6rem 1rem;border-radius:0 6px 6px 0;'
+                    f'font-size:.9rem;color:#E6EDF3">'
+                    f'{tutor_msg["text"][:200]}...</div>',
+                    unsafe_allow_html=True)
 
-    # ── SEARCH ──
-    search = st.text_input("🔍 Search your history...", placeholder="e.g. titanic, sales, diabetes")
 
-    filtered = history
-    if search.strip():
-        filtered = [e for e in history if search.strip().lower() in e["filename"].lower()]
-
-    if not filtered:
-        st.warning(f"No datasets found matching '{search}'.")
+def render_dataset_history(username):
+    sessions = get_user_history(username)
+    if not sessions:
+        st.info("No datasets analysed yet. Upload a dataset and run the "
+                "pipeline to start building your history.")
         return
-
-    st.markdown(f"**{len(filtered)} dataset(s) found**")
-
-    # ── CLEAR HISTORY ──
-    if username:
-        if st.button("🗑️ Clear All History", type="secondary"):
-            _set_user_history(username, [])
-            st.session_state["dataset_history"] = []
-            st.success("History cleared.")
-            st.rerun()
-
-    st.markdown("---")
-
-    # ── DISPLAY ENTRIES ──
-    for i, entry in enumerate(filtered):
-        with st.expander(f"📁 **{entry['filename']}** — {entry['timestamp']}"):
-
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Rows", f"{entry['rows']:,}")
-            with col2:
-                st.metric("Columns", entry['cols'])
-            with col3:
-                st.metric("Missing Values", entry.get('missing', 'N/A'))
-
-            st.markdown("**Columns:**")
-            st.markdown(", ".join(f"`{c}`" for c in entry["columns"]))
-
-            # ── PREVIEW ──
-            if entry.get("preview"):
-                st.markdown("**Preview (first 3 rows):**")
-                try:
-                    st.dataframe(pd.DataFrame(entry["preview"]), use_container_width=True)
-                except Exception:
-                    st.caption("Preview unavailable.")
-
-            st.markdown("---")
-
-            col_a, col_b = st.columns(2)
-
-            # ── RELOAD BUTTON ──
-            with col_a:
-                if st.button("🔄 Reload Dataset", key=f"reload_{i}", use_container_width=True):
-                    try:
-                        st.session_state["uploaded_df"] = pd.DataFrame(entry["preview"])
-                        st.session_state["uploaded_filename"] = entry["filename"]
-                        st.success(f"'{entry['filename']}' reloaded! Go to the Upload tab.")
-                    except Exception:
-                        st.warning("Could not reload this dataset. Please upload it again.")
-
-            # ── AI SUMMARY BUTTON ──
-            with col_b:
-                if st.button("🤖 AI Summary", key=f"summary_{i}", use_container_width=True):
-                    with st.spinner("Generating summary..."):
-                        summary = _generate_ai_summary(entry)
-                    st.info(summary)
+    st.markdown(f"**{len(sessions)} dataset(s) analysed**")
+    st.divider()
+    for i, session in enumerate(reversed(sessions)):
+        with st.expander(
+            f"📂 {session['dataset']} — {session['timestamp']} | "
+            f"{session['rows']:,} rows × {session['cols']} cols",
+            expanded=(i == 0)
+        ):
+            if session.get("ai_summary"):
+                st.markdown(
+                    f'<div style="background:#161B22;border-left:4px solid #02C39A;'
+                    f'padding:.8rem 1rem;border-radius:0 8px 8px 0;color:#E6EDF3">'
+                    f'🤖 {session["ai_summary"]}</div>',
+                    unsafe_allow_html=True)
+            if session.get("key_findings"):
+                st.markdown("**Key findings:**")
+                for finding in session["key_findings"]:
+                    st.markdown(f"- {finding}")

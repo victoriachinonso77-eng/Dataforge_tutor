@@ -441,8 +441,7 @@ def _render_chat_mode(level, use_gpt, gpt_client, use_live):
         for i, sug in enumerate(suggestions):
             with scols[i % 3]:
                 if st.button(sug, key=f"chatsugg_{i}", use_container_width=True):
-                    st.session_state["chat_messages"].append(
-                        {"role": "user", "text": sug})
+                    st.session_state["_pending_msg"] = sug
                     st.rerun()
         st.divider()
 
@@ -545,10 +544,11 @@ def _render_chat_mode(level, use_gpt, gpt_client, use_live):
                 charts = results.get("charts", [])
                 if "visualise" in msg.get("agents_ran", []) and charts:
                     with st.expander("📈 Charts", expanded=True):
-                        for chart in charts:
+                        for ci, chart in enumerate(charts):
                             st.markdown(f"**{chart['title']}**")
                             st.plotly_chart(chart["fig"],
-                                            use_container_width=True,
+                                use_container_width=True,
+                                key=f"chat_chart_{msg_idx}_{ci}",
                                             config={"displayModeBar": True})
 
                 # ML results
@@ -648,10 +648,18 @@ def _render_chat_mode(level, use_gpt, gpt_client, use_live):
     with ci2:
         send = st.button("Send ➤", key="chatbot_send", use_container_width=True)
 
-    if (send or user_input) and user_input.strip():
-        user_msg = user_input.strip()
-        st.session_state["chat_messages"].append(
-            {"role": "user", "text": user_msg})
+    # Use a pending message flag to prevent double processing
+    if send and user_input.strip():
+        st.session_state["_pending_msg"] = user_input.strip()
+        st.rerun()
+
+    if st.session_state.get("_pending_msg"):
+        user_msg = st.session_state.pop("_pending_msg")
+        # Only add if not already last message
+        msgs = st.session_state["chat_messages"]
+        if not (msgs and msgs[-1].get("role") == "user" and msgs[-1].get("text") == user_msg):
+            st.session_state["chat_messages"].append(
+                {"role": "user", "text": user_msg})
 
         # Route intent via GPT-4
         with st.spinner("DataForge is thinking..."):
@@ -1133,6 +1141,7 @@ with t3:
 
             st.markdown(f"**{chart['title']}**")
             st.plotly_chart(chart["fig"], use_container_width=True,
+                            key=f"pipe_chart_{chart['title'].replace(' ','_')}",
                             config={"displayModeBar": True})
 
             if use_gpt and gpt_client:

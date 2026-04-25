@@ -1,142 +1,92 @@
-
-# agents/theme_toggle.py — Upgraded Dark/Light Mode Toggle
-# =======
-
+# agents/theme_toggle.py
 import streamlit as st
 import json
 import os
 
-THEME_FILE = "data/theme_preferences.json"
-
-LIGHT_THEME = """
-    <style>
-        * { transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
-        .stApp { background-color: #F8F9FA; color: #212529; }
-        .stSidebar { background-color: #FFFFFF; }
-        .stTextInput > div > div > input { background-color: #FFFFFF; color: #212529; }
-        .stSelectbox > div > div { background-color: #FFFFFF; color: #212529; }
-        .stDataFrame { background-color: #FFFFFF; }
-        .block-container { background-color: #F8F9FA; }
-        h1, h2, h3 { color: #1F3864 !important; }
-        .stMetric { background-color: #FFFFFF; border-radius: 8px; padding: 10px; }
-        .stAlert { border-radius: 8px; }
-        .theme-badge {
-            background: #1F3864; color: white;
-            padding: 4px 12px; border-radius: 20px;
-            font-size: 13px; display: inline-block; margin-bottom: 10px;
-        }
-    </style>
-"""
-
-DARK_THEME = """
-    <style>
-        * { transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
-        .stApp { background-color: #0E1117; color: #FAFAFA; }
-        .stSidebar { background-color: #161B22; }
-        .stTextInput > div > div > input { background-color: #21262D; color: #FAFAFA; border-color: #30363D; }
-        .stSelectbox > div > div { background-color: #21262D; color: #FAFAFA; }
-        .stDataFrame { background-color: #161B22; }
-        .block-container { background-color: #0E1117; }
-        h1, h2, h3 { color: #58A6FF !important; }
-        .stMetric { background-color: #161B22; border-radius: 8px; padding: 10px; border: 1px solid #30363D; }
-        .stAlert { border-radius: 8px; }
-        .theme-badge {
-            background: #58A6FF; color: #0E1117;
-            padding: 4px 12px; border-radius: 20px;
-            font-size: 13px; display: inline-block; margin-bottom: 10px;
-        }
-    </style>
-"""
-
-# JavaScript to detect system preference (dark or light)
-SYSTEM_DETECTION_JS = """
-    <script>
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const stored = window.localStorage.getItem('df_system_checked');
-        if (!stored) {
-            window.localStorage.setItem('df_preferred_theme', prefersDark ? 'dark' : 'light');
-            window.localStorage.setItem('df_system_checked', 'true');
-        }
-    </script>
-"""
+THEME_FILE = "data/themes.json"
 
 
-# ── PERSISTENCE HELPERS ──
-
-def _load_theme_prefs() -> dict:
-    if not os.path.exists(THEME_FILE):
-        return {}
-    try:
-        with open(THEME_FILE, "r") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-
-def _save_theme_pref(username: str, theme: str) -> None:
+def _load_themes():
     os.makedirs("data", exist_ok=True)
-    prefs = _load_theme_prefs()
-    prefs[username] = theme
+    if os.path.exists(THEME_FILE):
+        with open(THEME_FILE) as f:
+            return json.load(f)
+    return {}
+
+
+def _save_themes(themes):
+    os.makedirs("data", exist_ok=True)
     with open(THEME_FILE, "w") as f:
-        json.dump(prefs, f, indent=2)
+        json.dump(themes, f, indent=2)
 
 
-def _get_user_theme(username: str) -> str:
-    return _load_theme_prefs().get(username, None)
+def get_user_theme(username=""):
+    if not username:
+        return "dark"
+    themes = _load_themes()
+    return themes.get(username, "dark")
 
 
-# ── MAIN TOGGLE ──
+def save_user_theme(username, theme):
+    themes = _load_themes()
+    themes[username] = theme
+    _save_themes(themes)
 
-def render_theme_toggle(st) -> str:
-    """
-    Renders a theme toggle in the sidebar.
-    - Detects system preference on first load
-    - Remembers preference per user across sessions (if logged in)
-    - Smooth animated transition between themes
-    Returns the current theme: 'light' or 'dark'.
-    """
 
-    username = st.session_state.get("username", None)
+def apply_theme(theme):
+    if theme == "light":
+        st.markdown("""
+        <style>
+        * { transition: background-color 0.3s ease, color 0.3s ease !important; }
+        .stApp { background-color:#F8FAFC !important; color:#1E293B !important; }
+        section[data-testid="stSidebar"] { background-color:#F1F5F9 !important; }
+        section[data-testid="stSidebar"] * { color:#1E293B !important; }
+        .lesson-box { background:#EFF6FF !important; color:#1E293B !important; }
+        .metric-card { background:#FFFFFF !important; border:1px solid #CBD5E1 !important; }
+        .metric-val { color:#028090 !important; }
+        .quiz-box { background:#F0F9FF !important; }
+        .audit-entry { background:#F8FAFC !important; color:#374151 !important; }
+        .chat-user { background:#E0F2FE !important; color:#1E293B !important; }
+        .chat-tutor { background:#FFFFFF !important; color:#1E293B !important; }
+        .stButton>button { background-color:#028090 !important; color:white !important; }
+        .stTabs [aria-selected="true"] { color:#028090 !important; border-bottom-color:#028090 !important; }
+        </style>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <style>
+        * { transition: background-color 0.3s ease, color 0.3s ease !important; }
+        .stApp { background-color:#0D1117 !important; color:#F0F6FC !important; }
+        section[data-testid="stSidebar"] { background-color:#161B22 !important; }
+        section[data-testid="stSidebar"] * { color:#F0F6FC !important; }
+        .lesson-box { background:#161B22 !important; color:#E6EDF3 !important; }
+        .metric-card { background:#161B22 !important; border:1px solid #028090 !important; }
+        .metric-val { color:#02C39A !important; }
+        .quiz-box { background:#0D2137 !important; }
+        .audit-entry { background:#161B22 !important; color:#C9D1D9 !important; }
+        .chat-user { background:#1C2333 !important; color:#E6EDF3 !important; }
+        .chat-tutor { background:#161B22 !important; color:#E6EDF3 !important; }
+        .stButton>button { background-color:#02C39A !important; color:#0D1117 !important; }
+        .stTabs [aria-selected="true"] { color:#02C39A !important; border-bottom-color:#02C39A !important; }
+        </style>
+        """, unsafe_allow_html=True)
 
-    # ── Step 1: Inject system detection JS (runs once) ──
-    st.markdown(SYSTEM_DETECTION_JS, unsafe_allow_html=True)
 
-    # ── Step 2: Determine initial theme ──
+def render_theme_toggle(username=""):
+    saved_theme = get_user_theme(username)
     if "theme" not in st.session_state:
+        st.session_state["theme"] = saved_theme
+
+    current = st.session_state["theme"]
+    icon    = "☀️" if current == "dark" else "🌙"
+    label   = f"{icon} Switch to {'Light' if current == 'dark' else 'Dark'} Mode"
+
+    if st.button(label, key="theme_toggle_btn"):
+        new_theme = "light" if current == "dark" else "dark"
+        st.session_state["theme"] = new_theme
         if username:
-            # Logged in — load from disk
-            saved = _get_user_theme(username)
-            st.session_state["theme"] = saved if saved else "light"
-        else:
-            # Not logged in — default to light
-            st.session_state["theme"] = "light"
+            save_user_theme(username, new_theme)
+        st.rerun()
 
-    # ── Step 3: Render toggle in sidebar ──
-    with st.sidebar:
-        st.markdown("---")
-        current = st.session_state["theme"]
-
-        badge = "☀️ Light Mode" if current == "light" else "🌙 Dark Mode"
-        label = "🌙 Switch to Dark Mode" if current == "light" else "☀️ Switch to Light Mode"
-
-        st.markdown(f'<div class="theme-badge">{badge}</div>', unsafe_allow_html=True)
-
-        if st.button(label, use_container_width=True, key="theme_toggle_btn"):
-            new_theme = "dark" if current == "light" else "light"
-            st.session_state["theme"] = new_theme
-
-            # Save to disk if logged in
-            if username:
-                _save_theme_pref(username, new_theme)
-                st.caption(f"✅ Theme saved for {username}")
-
-            st.rerun()
-
-        if not username:
-            st.caption("💡 Log in to save your theme preference.")
-
-    # ── Step 4: Apply theme CSS with smooth transition ──
-    theme = st.session_state["theme"]
-    st.markdown(DARK_THEME if theme == "dark" else LIGHT_THEME, unsafe_allow_html=True)
-
-    return theme
+    apply_theme(st.session_state["theme"])
+    return st.session_state["theme"]
