@@ -6,10 +6,6 @@ import pandas as pd
 import numpy as np
 import os
 import time
-import io
-import json
-import zipfile
-import re
 from dotenv import load_dotenv
 
 # ── Load keys from .env once at startup ───────────────────────────────────
@@ -31,12 +27,24 @@ from agents.gpt_tutor        import (generate_lesson, generate_quiz as gpt_gener
                                       generate_feedback, explain_automl_results,
                                       build_dataset_context)
 from agents.voice            import text_to_speech, get_audio_html, get_narration, clean_for_speech
+from agents.intent_router    import route_intent, validate_task
+from agents.chat_orchestrator import run_selected_agents
+from login_page        import render_login_page, render_logout_button
+from challenge_tab     import render_challenge_tab
+from progress_tab      import render_progress_tab
+from agents.theme_toggle   import render_theme_toggle
+from agents.dataset_history import (save_dataset_session, generate_dataset_summary,
+                                     render_conversation_history, render_dataset_history)
+from agents.glossary       import render_glossary_tab
+from agents.eda_tools      import (explain_chart_gpt, explain_chart_local,
+                                    generate_eda_story_gpt, generate_eda_story_local,
+                                    generate_diff_view, render_diff_view,
+                                    build_export_pack)
 from agents.certificate      import generate_certificate, show_certificate_section
 from agents.code_export      import generate_notebook, notebook_to_bytes
 from agents.bias_report      import run_bias_audit, render_bias_report
 from agents.multi_dataset    import compare_datasets
 from agents.kaggle_datasets  import recommend_datasets, render_dataset_cards
-from agents.eda_story         import generate_eda_story
 # student_tracker removed
 
 # ── Page config ────────────────────────────────────────────────────────────
@@ -102,9 +110,15 @@ st.markdown("""
 for key, default in [
     ("level", "beginner"), ("chat_history", []),
     ("quiz_answers", {}),  ("steps_completed", []), ("score", 0),
+    ("app_mode", "chat"),  ("chat_messages", []),
+    ("df_raw_chat", None), ("cleaned_df_chat", None),
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
+
+# ── Authentication gate ───────────────────────────────────────────────────
+render_login_page()
+username = st.session_state.get("username", "")
 
 # ── Set up OpenAI client from .env ────────────────────────────────────────
 use_gpt    = False
@@ -252,7 +266,22 @@ with st.sidebar:
     st.markdown("*Your AI Data Science Mentor*")
     st.divider()
 
-    # AI status indicators
+    # ── Mode toggle ────────────────────────────────────────────────────
+    st.markdown("### 🔀 Mode")
+    mode = st.radio(
+        "Choose how you want to use DataForge:",
+        ["💬 Chat Mode (recommended)", "⚡ Pipeline Mode (run everything)"],
+        index=0 if st.session_state["app_mode"] == "chat" else 1,
+        key="mode_radio"
+    )
+    st.session_state["app_mode"] = "chat" if "Chat" in mode else "pipeline"
+    if st.session_state["app_mode"] == "chat":
+        st.caption("Tell DataForge what you want — agents run on demand")
+    else:
+        st.caption("Upload a file and run the full pipeline in one click")
+    st.divider()
+
+    # ── AI status ──────────────────────────────────────────────────────
     st.markdown("### ⚙️ AI Status")
     if use_gpt:
         st.success("GPT-4 enabled ✅")
@@ -264,7 +293,7 @@ with st.sidebar:
         st.caption("Using curated resource list")
     st.divider()
 
-    # Level selector
+    # ── Level selector ─────────────────────────────────────────────────
     st.markdown("### 📚 Your Level")
     level_pick = st.radio(
         "Choose your level:",
@@ -274,33 +303,434 @@ with st.sidebar:
     st.session_state["level"] = level_pick.lower()
     st.divider()
 
-    # Progress
-    st.markdown("### 📊 Your Progress")
-    done_steps = [s.lower() for s in st.session_state["steps_completed"]]
-    for step in ["Upload", "Clean", "Analyse", "Visualise", "AutoML", "Chat"]:
-        icon = "✅" if step.lower() in done_steps else "⭕"
-        st.markdown(f"{icon} {step}")
-    st.divider()
+    # ── Progress (pipeline mode only) ──────────────────────────────────
+    if st.session_state["app_mode"] == "pipeline":
+        st.markdown("### 📊 Your Progress")
+        done_steps = [s.lower() for s in st.session_state["steps_completed"]]
+        for step in ["Upload", "Clean", "Analyse", "Visualise", "AutoML", "Chat"]:
+            icon = "✅" if step.lower() in done_steps else "⭕"
+            st.markdown(f"{icon} {step}")
+        st.divider()
+        st.markdown(f"### 🏆 Quiz Score: {st.session_state['score']} pts")
+        st.progress(len(set(done_steps)) / 6)
+        st.caption(f"{len(set(done_steps))}/6 steps complete")
+        st.divider()
 
-    # Score
-    st.markdown(f"### 🏆 Quiz Score: {st.session_state['score']} pts")
-    st.progress(len(set(done_steps)) / 6)
-    st.caption(f"{len(set(done_steps))}/6 steps complete")
-    st.divider()
-
-    # Student name for certificate
+    # ── Student name ───────────────────────────────────────────────────
     st.markdown("### 👤 Your Name")
     st.text_input("Name (for certificate)", placeholder="Enter your name...",
                   key="student_name")
     st.divider()
 
-    # Voice settings
+    # ── Theme toggle ────────────────────────────────────────────────────
+    st.markdown("### 🎨 Theme")
+    render_theme_toggle(username=st.session_state.get("username", ""))
+    st.divider()
+
+    # ── Voice ──────────────────────────────────────────────────────────
     st.markdown("### 🔊 Voice Narration")
     if use_gpt:
-        st.markdown("Click **🔊 Listen** buttons throughout the app to hear lessons read aloud.")
-        st.caption("Powered by OpenAI TTS · 6 voices available")
+        st.caption("Click 🔊 Listen buttons to hear lessons aloud")
     else:
-        st.caption("Add OPENAI_API_KEY to .env to enable voice narration")
+        st.caption("Add OPENAI_API_KEY to .env to enable voice")
+
+    # ── Clear chat ──────────────────────────────────────────────────────
+    if st.session_state["app_mode"] == "chat":
+        st.divider()
+        if st.button("🗑️ Clear conversation"):
+            st.session_state["chat_messages"]   = []
+            st.session_state["df_raw_chat"]     = None
+            st.session_state["cleaned_df_chat"] = None
+            st.rerun()
+
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# CHAT MODE — conversational interface (main entry point)
+# ══════════════════════════════════════════════════════════════════════════
+def _render_chat_mode(level, use_gpt, gpt_client, use_live):
+    """Renders the full conversational chatbot interface."""
+
+    # ── Upload section ─────────────────────────────────────────────────
+    st.markdown("### 📂 Upload Your Dataset")
+    col_up1, col_up2 = st.columns([2, 1])
+    with col_up1:
+        uploaded_chat = st.file_uploader(
+            "Drop a CSV or Excel file here:",
+            type=["csv", "xlsx", "xls"], key="chat_uploader")
+    with col_up2:
+        use_demo_chat = st.checkbox("🎯 Use demo dataset", key="chat_demo")
+
+    if use_demo_chat:
+        rng = np.random.default_rng(42)
+        n   = 400
+        df_chat = pd.DataFrame({
+            "age":            rng.integers(18, 70, n).astype(float),
+            "income":         rng.exponential(40000, n),
+            "spending_score": rng.normal(50, 20, n),
+            "visits":         rng.poisson(5, n).astype(float),
+            "region":         rng.choice(["North","South","East","West",None], n),
+            "customer_type":  rng.choice(["Premium","Standard","Basic"], n),
+            "satisfaction":   rng.choice([1,2,3,4,5,None], n),
+            "churn":          rng.choice([0,1], n),
+        })
+        idx = rng.choice(n, 40, replace=False)
+        df_chat.loc[idx, "age"]         = None
+        df_chat.loc[idx[:10], "income"] = None
+        df_chat = pd.concat([df_chat, df_chat.iloc[:15]], ignore_index=True)
+        if st.session_state.get("df_raw_chat") is None:
+            st.session_state["df_raw_chat"] = df_chat
+            st.session_state["chat_messages"] = []
+        st.success(f"Demo dataset ready: {df_chat.shape[0]} rows × {df_chat.shape[1]} columns")
+
+    elif uploaded_chat:
+        try:
+            df_chat = (pd.read_csv(uploaded_chat)
+                       if uploaded_chat.name.endswith(".csv")
+                       else pd.read_excel(uploaded_chat))
+            if st.session_state.get("df_raw_chat") is None or                st.session_state.get("_chat_fname") != uploaded_chat.name:
+                st.session_state["df_raw_chat"]  = df_chat
+                st.session_state["_chat_fname"]  = uploaded_chat.name
+                st.session_state["chat_messages"] = []
+            st.success(f"✅ {uploaded_chat.name} — "
+                       f"{df_chat.shape[0]:,} rows × {df_chat.shape[1]} columns")
+        except Exception as e:
+            st.error(f"Failed to read file: {e}")
+
+    df_raw = st.session_state.get("df_raw_chat")
+
+    # ── No dataset yet ─────────────────────────────────────────────────
+    if df_raw is None:
+        st.info("👆 Upload a dataset or tick the demo checkbox above to get started.")
+        st.markdown("""
+**Then tell DataForge what you want, for example:**
+- *"Clean my data and show me the statistics"*
+- *"Find correlations and create interactive charts"*
+- *"Train a machine learning model to predict churn"*
+- *"Run a full analysis and write a report"*
+- *"Check my data for bias and fairness issues"*
+        """)
+        return
+
+    # ── Dataset info ───────────────────────────────────────────────────
+    k1, k2, k3 = st.columns(3)
+    for col_st, val, lbl in [
+        (k1, f"{df_raw.shape[0]:,}", "Rows"),
+        (k2, df_raw.shape[1], "Columns"),
+        (k3, len(df_raw.select_dtypes(include=["number"]).columns), "Numeric cols"),
+    ]:
+        col_st.markdown(
+            f'<div class="metric-card"><div class="metric-val">{val}</div>'
+            f'<div class="metric-lbl">{lbl}</div></div>',
+            unsafe_allow_html=True)
+
+    st.divider()
+
+    # ── Suggested prompts (shown only when conversation is empty) ──────
+    if not st.session_state["chat_messages"]:
+        st.markdown("**💡 Try asking:**")
+        suggestions = [
+            "Clean my data and show me the statistics",
+            "Find correlations and visualise my data",
+            "Predict a column using machine learning",
+            "Write a full analysis report",
+            "Check my data for bias and fairness issues",
+            "Run a complete data science pipeline",
+        ]
+        scols = st.columns(3)
+        for i, sug in enumerate(suggestions):
+            with scols[i % 3]:
+                if st.button(sug, key=f"chatsugg_{i}", use_container_width=True):
+                    st.session_state["chat_messages"].append(
+                        {"role": "user", "text": sug})
+                    st.rerun()
+        st.divider()
+
+    # ── Render conversation history ────────────────────────────────────
+    for msg_idx, msg in enumerate(st.session_state["chat_messages"]):
+
+        if msg["role"] == "user":
+            st.markdown(
+                f'<div class="chat-wrap"><div class="chat-user">🧑‍🎓 {msg["text"]}</div></div>',
+                unsafe_allow_html=True)
+
+        elif msg["role"] == "bot":
+            st.markdown(
+                f'<div class="chat-wrap"><div class="chat-tutor">🤖 {msg["text"]}</div></div>',
+                unsafe_allow_html=True)
+
+            # Agent badges
+            if msg.get("agents_ran"):
+                badges = " ".join(
+                    f'<span style="background:#028090;color:white;border-radius:20px;'
+                    f'padding:2px 10px;font-size:.78rem;font-weight:bold;margin:2px">'
+                    f'✅ {a.title()}</span>'
+                    for a in msg["agents_ran"]
+                )
+                if msg.get("agents_declined"):
+                    badges += " " + " ".join(
+                        f'<span style="background:#7F1D1D;color:#FCA5A5;'
+                        f'border-radius:20px;padding:2px 10px;font-size:.78rem;'
+                        f'font-weight:bold;margin:2px">❌ {a}</span>'
+                        for a in msg["agents_declined"]
+                    )
+                st.markdown(badges, unsafe_allow_html=True)
+
+            results  = msg.get("results")
+            teaching = msg.get("teaching_focus", "data science")
+
+            # ── Personalised lesson ─────────────────────────────────
+            if results and results.get("success"):
+                lesson_key = f"chat_lesson_{msg_idx}"
+                if lesson_key not in st.session_state:
+                    df_c     = results.get("cleaned_df", df_raw)
+                    insights = results.get("insights", {})
+                    audit    = results.get("audit_log", [])
+                    if use_gpt and gpt_client and df_c is not None:
+                        try:
+                            from agents.gpt_tutor import generate_lesson, build_dataset_context
+                            ctx = build_dataset_context(df_c, insights, audit)
+                            st.session_state[lesson_key] = generate_lesson(
+                                gpt_client, teaching, level, ctx)
+                        except Exception:
+                            st.session_state[lesson_key] = get_lesson(
+                                teaching, "intro", level)
+                    else:
+                        st.session_state[lesson_key] = get_lesson(
+                            teaching, "intro", level)
+
+                lesson_text = st.session_state.get(lesson_key, "")
+                if lesson_text:
+                    with st.expander("📖 What this means — personalised lesson",
+                                     expanded=True):
+                        st.markdown(
+                            f'<div class="lesson-box">{lesson_text}</div>',
+                            unsafe_allow_html=True)
+                        speak(lesson_text, label="Listen to lesson",
+                              key_suffix=f"chl_{msg_idx}")
+
+                # Audit trail
+                audit = results.get("audit_log", [])
+                if "clean" in msg.get("agents_ran", []) and audit:
+                    with st.expander("🧹 Cleaning audit", expanded=False):
+                        for entry in audit[:10]:
+                            st.markdown(
+                                f'<div class="audit-entry">{entry}</div>',
+                                unsafe_allow_html=True)
+                        df_c = results.get("cleaned_df")
+                        if df_c is not None:
+                            st.download_button(
+                                "⬇️ Download cleaned CSV",
+                                df_c.to_csv(index=False).encode(),
+                                "cleaned_data.csv", "text/csv",
+                                key=f"dl_clean_chat_{msg_idx}")
+
+                # Statistics
+                insights = results.get("insights", {})
+                if "analyse" in msg.get("agents_ran", []) and insights:
+                    with st.expander("📊 Statistics", expanded=True):
+                        if insights.get("numeric_summary"):
+                            st.dataframe(
+                                pd.DataFrame(insights["numeric_summary"]).T.round(3),
+                                use_container_width=True)
+                        if insights.get("strong_correlations"):
+                            st.markdown("**Correlations found:**")
+                            for p in insights["strong_correlations"]:
+                                d = "🟢" if p["correlation"] > 0 else "🔴"
+                                st.markdown(
+                                    f"- {d} **{p['col_a']}** ↔ **{p['col_b']}**: "
+                                    f"r = `{p['correlation']}`")
+
+                # Charts
+                charts = results.get("charts", [])
+                if "visualise" in msg.get("agents_ran", []) and charts:
+                    with st.expander("📈 Charts", expanded=True):
+                        for chart in charts:
+                            st.markdown(f"**{chart['title']}**")
+                            st.plotly_chart(chart["fig"],
+                                            use_container_width=True,
+                                            config={"displayModeBar": True})
+
+                # ML results
+                ml_res = results.get("ml_results")
+                if "automl" in msg.get("agents_ran", []) and ml_res and                         not ml_res.get("error"):
+                    with st.expander("🤖 Machine learning results", expanded=True):
+                        best   = ml_res.get("best_model", "Unknown")
+                        score  = ml_res.get("best_score", 0)
+                        metric = ml_res.get("best_metric", "accuracy")
+                        st.markdown(
+                            f'<div class="automl-best">'
+                            f'<div class="automl-score">{best}</div>'
+                            f'<div>{metric}: {score:.1%}</div></div>',
+                            unsafe_allow_html=True)
+                        if ml_res.get("models"):
+                            mdf = pd.DataFrame(ml_res["models"])
+                            st.dataframe(
+                                mdf.style.background_gradient(
+                                    subset=["score"], cmap="YlGn"),
+                                use_container_width=True)
+                        if ml_res.get("feature_importance"):
+                            import plotly.express as px
+                            fi_df = pd.DataFrame(
+                                list(ml_res["feature_importance"].items()),
+                                columns=["Feature", "Importance"])
+                            fig = px.bar(
+                                fi_df, x="Importance", y="Feature",
+                                orientation="h", color="Importance",
+                                color_continuous_scale=["#028090","#02C39A"])
+                            fig.update_layout(
+                                plot_bgcolor="white", paper_bgcolor="white",
+                                showlegend=False, coloraxis_showscale=False,
+                                yaxis=dict(autorange="reversed"))
+                            st.plotly_chart(fig, use_container_width=True)
+
+                # Report
+                report = results.get("report")
+                if "report" in msg.get("agents_ran", []) and report:
+                    with st.expander("📝 Analysis report", expanded=False):
+                        st.markdown(report)
+                        st.download_button(
+                            "⬇️ Download report",
+                            report.encode(), "dataforge_report.md",
+                            "text/markdown", key=f"dl_rpt_chat_{msg_idx}")
+                    speak(report[:800], label="Listen to report summary",
+                          key_suffix=f"rpt_chat_{msg_idx}")
+
+                # Bias
+                bias_rep = results.get("bias_report")
+                if "bias" in msg.get("agents_ran", []) and bias_rep:
+                    with st.expander("⚖️ Bias report", expanded=True):
+                        from agents.bias_report import render_bias_report
+                        render_bias_report(st, bias_rep)
+
+                # Resources
+                if use_live:
+                    with st.spinner("Finding resources..."):
+                        res = fetch_live_resources(
+                            teaching, level,
+                            youtube_key=YOUTUBE_KEY or None,
+                            tavily_key=TAVILY_KEY or None)
+                else:
+                    res = get_resources(teaching, level)
+                vids = res.get("videos", [])[:2]
+                arts = res.get("articles", [])[:2]
+                if vids or arts:
+                    with st.expander("📚 Learn more", expanded=False):
+                        for v in vids:
+                            c1, c2 = st.columns([4, 1])
+                            with c1:
+                                st.markdown(f"**[{v['title']}]({v['url']})**  \n"
+                                            f"📺 *{v['channel']}*")
+                            with c2:
+                                st.link_button("▶ Watch", v["url"])
+                        for a in arts:
+                            c1, c2 = st.columns([4, 1])
+                            with c1:
+                                st.markdown(f"**[{a['title']}]({a['url']})**  \n"
+                                            f"📖 *{a['source']}*")
+                            with c2:
+                                st.link_button("📖 Read", a["url"])
+
+        elif msg["role"] == "error":
+            st.error(msg["text"])
+
+    # ── Chat input (always at bottom) ──────────────────────────────────
+    st.divider()
+    st.markdown("#### 💬 Tell DataForge what you want:")
+    ci1, ci2 = st.columns([5, 1])
+    with ci1:
+        user_input = st.text_input(
+            "Request",
+            placeholder="e.g. Clean my data and find correlations  |  "
+                        "Predict churn with machine learning  |  Check for bias",
+            label_visibility="collapsed",
+            key="chatbot_input")
+    with ci2:
+        send = st.button("Send ➤", key="chatbot_send", use_container_width=True)
+
+    if (send or user_input) and user_input.strip():
+        user_msg = user_input.strip()
+        st.session_state["chat_messages"].append(
+            {"role": "user", "text": user_msg})
+
+        # Route intent via GPT-4
+        with st.spinner("DataForge is thinking..."):
+            routing = route_intent(user_msg, df_raw, gpt_client)
+
+        feasible    = routing.get("feasible", True)
+        agents      = routing.get("agents_to_run", ["clean", "analyse"])
+        target_col  = routing.get("target_col")
+        decline_msg = routing.get("decline_reason", "")
+        plan        = routing.get("response_plan", "")
+        teaching    = routing.get("teaching_focus", "data science")
+
+        if not feasible:
+            # Agent declines the task — explains why
+            st.session_state["chat_messages"].append({
+                "role": "bot",
+                "text": f"I cannot do that with this dataset.\n\n"
+                        f"{decline_msg}\n\n{plan}",
+                "agents_ran":      [],
+                "agents_declined": agents,
+                "results":         None,
+                "teaching_focus":  teaching,
+            })
+            st.rerun()
+
+        # Validate each agent against actual data
+        validation   = validate_task(agents, df_raw,
+                                      target_col=target_col)
+        valid_agents = [a for a, v in validation.items() if v["can_run"]]
+        bad_agents   = {a: v["reason"] for a, v in validation.items()
+                        if not v["can_run"]}
+
+        if not valid_agents:
+            reasons = " | ".join(bad_agents.values())
+            st.session_state["chat_messages"].append({
+                "role": "error",
+                "text": f"Cannot run the requested agents: {reasons}"
+            })
+            st.rerun()
+
+        # Run valid agents
+        with st.spinner(f"Running {', '.join(valid_agents)}..."):
+            results = run_selected_agents(
+                df_raw        = df_raw,
+                agents_to_run = valid_agents,
+                target_col    = target_col,
+                use_gpt       = use_gpt,
+                gpt_client    = gpt_client,
+            )
+
+        if not results["success"]:
+            st.session_state["chat_messages"].append({
+                "role":  "error",
+                "text":  f"Something went wrong: {results['error']}"
+            })
+            st.rerun()
+
+        if results.get("cleaned_df") is not None:
+            st.session_state["cleaned_df_chat"] = results["cleaned_df"]
+
+        bot_intro = plan
+        if bad_agents:
+            bot_intro += "\n\n⚠️ Some tasks were skipped:\n"
+            for a, reason in bad_agents.items():
+                bot_intro += f"- **{a}**: {reason}\n"
+
+        agents_ran = results.get("agents_ran", [])
+        elapsed    = results.get("elapsed", 0)
+        st.session_state["chat_messages"].append({
+            "role":            "bot",
+            "text":            (f"{bot_intro}\n\n"
+                                f"✅ Done in {elapsed}s — "
+                                f"ran: {', '.join(agents_ran)}."),
+            "agents_ran":      agents_ran,
+            "agents_declined": list(bad_agents.keys()),
+            "results":         results,
+            "teaching_focus":  teaching,
+        })
+        st.rerun()
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -308,15 +738,24 @@ with st.sidebar:
 # ══════════════════════════════════════════════════════════════════════════
 st.markdown('<p class="tutor-title">🎓 DataForge — AI Data Science Tutor</p>',
             unsafe_allow_html=True)
-st.markdown('<p class="tutor-sub">Learn the complete data science pipeline — '
-            'step by step, with explanations, quizzes and personalised teaching</p>',
+st.markdown('<p class="tutor-sub">Your conversational AI data science mentor — '
+            'upload a dataset and tell me what you want to learn</p>',
             unsafe_allow_html=True)
 st.divider()
 
-level = st.session_state["level"]
+level    = st.session_state["level"]
+app_mode = st.session_state.get("app_mode", "chat")
 
 # ══════════════════════════════════════════════════════════════════════════
-# WELCOME SCREEN
+# ROUTE: CHAT MODE (default) or PIPELINE MODE
+# ══════════════════════════════════════════════════════════════════════════
+if app_mode == "chat":
+    _render_chat_mode(level, use_gpt, gpt_client, use_live)
+    st.stop()
+
+# ── Below here = Pipeline Mode only ──────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+# WELCOME SCREEN (pipeline mode)
 # ══════════════════════════════════════════════════════════════════════════
 if "intro_shown" not in st.session_state:
     with st.expander("👋 Welcome — Read This First!", expanded=True):
@@ -433,6 +872,34 @@ if df_raw is not None:
         for s in ["clean", "analyse", "visualise"]:
             if s not in done_steps:
                 st.session_state["steps_completed"].append(s)
+        # Save dataset session to history
+        if st.session_state.get("username"):
+            with st.spinner("Saving session..."):
+                ai_sum = generate_dataset_summary(
+                    gpt_client, df_raw,
+                    results.get("insights", {}),
+                    results.get("audit_log", [])
+                )
+                key_findings = []
+                insights_r = results.get("insights", {})
+                if insights_r.get("strong_correlations"):
+                    for p in insights_r["strong_correlations"][:2]:
+                        key_findings.append(
+                            f"Strong {'positive' if p['correlation']>0 else 'negative'} "
+                            f"correlation between {p['col_a']} and {p['col_b']} "
+                            f"(r={p['correlation']})"
+                        )
+                if insights_r.get("skewed_columns"):
+                    key_findings.append(
+                        f"Skewed columns: {', '.join(list(insights_r['skewed_columns'].keys())[:3])}"
+                    )
+                save_dataset_session(
+                    username     = st.session_state["username"],
+                    dataset_name = getattr(uploaded, "name", "demo_dataset.csv") if not use_demo else "demo_dataset.csv",
+                    shape        = df_raw.shape,
+                    key_findings = key_findings,
+                    ai_summary   = ai_sum,
+                )
         st.rerun()
 
 
@@ -473,10 +940,15 @@ st.markdown("")
 # ══════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════
-t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs([
+# Logout button
+render_logout_button()
+
+t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13 = st.tabs([
     "🧹 Cleaning", "📊 Analysis", "📈 Visualisation",
     "🤖 AutoML", "💬 Ask the Tutor", "📝 Report",
     "⚖️ Bias Report", "🤝 Collaborate",
+    "🧠 Challenge Me", "📈 My Progress",
+    "📖 Glossary", "💬 Conversation History", "📂 Dataset History",
 ])
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -485,20 +957,6 @@ t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs([
 with t1:
     n_dupes   = sum(1 for e in audit if "duplicate" in e.lower())
     n_missing = sum(1 for e in audit if "missing" in e.lower())
-
-    # Before-vs-after cleaning metrics for transparency
-    raw_rows = int(df_raw.shape[0]) if df_raw is not None else int(cleaned.shape[0])
-    raw_cols = int(df_raw.shape[1]) if df_raw is not None else int(cleaned.shape[1])
-    clean_rows = int(cleaned.shape[0])
-    clean_cols = int(cleaned.shape[1])
-
-    rows_removed = max(raw_rows - clean_rows, 0)
-    cols_removed = max(raw_cols - clean_cols, 0)
-    missing_before = int(df_raw.isna().sum().sum()) if df_raw is not None else int(cleaned.isna().sum().sum())
-    missing_after = int(cleaned.isna().sum().sum())
-    missing_fixed = max(missing_before - missing_after, 0)
-    dupes_before = int(df_raw.duplicated().sum()) if df_raw is not None else int(cleaned.duplicated().sum())
-    dupes_after = int(cleaned.duplicated().sum())
 
     st.markdown("### 📖 Understanding Your Data Cleaning Results")
 
@@ -520,20 +978,6 @@ with t1:
     for entry in audit:
         st.markdown(f'<div class="audit-entry">{entry}</div>', unsafe_allow_html=True)
 
-    st.markdown("### 🔍 What Changed After Cleaning? (Diff View)")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Rows Removed", f"{rows_removed:,}", delta=f"{raw_rows:,} → {clean_rows:,}")
-    c2.metric("Columns Removed", f"{cols_removed:,}", delta=f"{raw_cols:,} → {clean_cols:,}")
-    c3.metric("Missing Cells Fixed", f"{missing_fixed:,}", delta=f"{missing_before:,} → {missing_after:,}")
-
-    d1, d2 = st.columns(2)
-    d1.metric("Duplicates Before → After", f"{dupes_before:,} → {dupes_after:,}")
-    d2.metric("Missing Before → After", f"{missing_before:,} → {missing_after:,}")
-
-    st.caption(
-        "This snapshot shows exactly what changed during cleaning so you can verify and trust each transformation."
-    )
-
     if use_gpt and gpt_client:
         st.markdown("### 💡 GPT-4 Explanation")
         if "lesson_audit" not in st.session_state:
@@ -547,6 +991,16 @@ with t1:
     st.download_button("⬇️ Download Cleaned CSV",
                        cleaned.to_csv(index=False).encode(),
                        "cleaned_data.csv", "text/csv")
+
+    # ── Feature 3: Diff View ──────────────────────────────────────────
+    st.divider()
+    if st.button("🔄 Show Before vs After Diff", key="show_diff"):
+        st.session_state["show_diff"] = True
+    if st.session_state.get("show_diff"):
+        if "diff_data" not in st.session_state:
+            st.session_state["diff_data"] = generate_diff_view(
+                df_raw, cleaned, audit)
+        render_diff_view(st, st.session_state["diff_data"])
 
     show_resources("cleaning", level)
     st.divider()
@@ -582,42 +1036,6 @@ with t1:
 # TAB 2 — ANALYSIS
 # ════════════════════════════════════════════════════════════════════════════
 with t2:
-    st.markdown("### ✨ One-Click EDA Story")
-    st.caption(
-        "Generate a short narrative of data quality, key patterns, and practical next steps."
-    )
-
-    if st.button("✨ Generate EDA Story", key="eda_story_btn"):
-        with st.spinner("Building your EDA story..."):
-            story_text, story_mode, story_detail = generate_eda_story(
-                cleaned,
-                insights,
-                audit,
-                use_gpt=use_gpt,
-                client=gpt_client,
-            )
-        st.session_state["eda_story_text"] = story_text
-        st.session_state["eda_story_mode"] = story_mode
-        st.session_state["eda_story_detail"] = story_detail
-
-    if st.session_state.get("eda_story_text"):
-        mode = st.session_state.get("eda_story_mode", "local")
-        detail = st.session_state.get("eda_story_detail", "")
-        if mode == "gpt":
-            st.success("Source: GPT")
-        else:
-            st.info("Source: Local fallback")
-        if detail:
-            st.caption(f"Generation detail: {detail}")
-        lesson_box(st.session_state["eda_story_text"])
-        speak(
-            st.session_state["eda_story_text"],
-            label="Listen to EDA Story",
-            key_suffix="eda_story",
-        )
-
-    st.divider()
-
     if use_gpt and gpt_client:
         if "lesson_analysis" not in st.session_state:
             with st.spinner("GPT-4 is personalising your statistics lesson..."):
@@ -727,6 +1145,28 @@ with t3:
                             level, insights)
                 with st.expander("💡 What does this chart tell us?", expanded=True):
                     st.markdown(st.session_state[ck])
+                    speak(st.session_state[ck], label="Listen to Chart Interpretation",
+                          key_suffix=f"chartinterp_{ck[:20]}")
+
+            # ── Feature 1: Explain Chart button ──────────────────────
+            explain_key = f"explain_{chart['title'].replace(' ','_')[:20]}"
+            if st.button("💬 Explain This Chart", key=f"btn_{explain_key}"):
+                with st.spinner("Generating plain-English explanation..."):
+                    exp = explain_chart_gpt(
+                        gpt_client, chart["title"],
+                        chart["title"].split()[0].lower(),
+                        insights, cleaned, level)
+                st.session_state[explain_key] = exp
+            if st.session_state.get(explain_key):
+                st.markdown(
+                    f'<div style="background:#0D2137;border-left:4px solid #02C39A;'
+                    f'padding:1rem 1.4rem;border-radius:0 8px 8px 0;'
+                    f'color:#E6EDF3;margin:.5rem 0">'
+                    f'{st.session_state[explain_key]}</div>',
+                    unsafe_allow_html=True)
+                speak(st.session_state[explain_key],
+                      label="Listen to explanation",
+                      key_suffix=f"exp_{explain_key[:15]}")
             st.markdown("")
 
     show_resources("visualisation", level)
@@ -1001,6 +1441,30 @@ with t6:
     speak(report[:1000], label="Listen to Report Summary", key_suffix="report_narration")
     st.markdown(report)
 
+    # ── Feature 2: One-Click EDA Story ───────────────────────────────
+    st.divider()
+    st.markdown("### 📖 One-Click EDA Story")
+    st.markdown("Get a plain-English narrative of your entire dataset analysis in one click.")
+    if st.button("📖 Generate EDA Story", key="gen_eda_story"):
+        with st.spinner("Writing your EDA story..."):
+            story = generate_eda_story_gpt(
+                gpt_client, df_raw, cleaned, insights, audit, level)
+            st.session_state["eda_story"] = story
+    if st.session_state.get("eda_story"):
+        st.markdown(
+            f'<div style="background:#161B22;border-left:4px solid #02C39A;'
+            f'padding:1.2rem 1.5rem;border-radius:0 8px 8px 0;'
+            f'color:#E6EDF3;line-height:1.8">'
+            f'{st.session_state["eda_story"]}</div>',
+            unsafe_allow_html=True)
+        speak(st.session_state["eda_story"][:800],
+              label="Listen to EDA Story", key_suffix="eda_story_audio")
+        st.download_button("⬇️ Download EDA Story (.md)",
+                           st.session_state["eda_story"].encode(),
+                           "eda_story.md", "text/markdown",
+                           key="dl_eda_story")
+
+    st.divider()
     col_r1, col_r2 = st.columns(2)
     with col_r1:
         st.download_button("⬇️ Download Report (.md)",
@@ -1026,99 +1490,6 @@ with t6:
                 key="dl_notebook"
             )
             st.success("✅ Notebook ready! Open in Jupyter or VS Code to run it.")
-
-    st.divider()
-    st.markdown("### 📦 Export Pack (.zip)")
-    st.markdown(
-        "Click **Build Export Pack** to generate the zip contents. "
-        "After that, the **Export Pack (.zip)** button appears."
-    )
-
-    if st.button("🛠 Build Export Pack", key="build_export_pack_btn"):
-        with st.spinner("Building export pack..."):
-            buffer = io.BytesIO()
-            with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-                # Core outputs
-                zf.writestr("report/dataforge_report.md", report or "")
-                zf.writestr(
-                    "eda/dataforge_eda_story.md",
-                    st.session_state.get(
-                        "eda_story_text",
-                        "EDA Story was not generated in this session.",
-                    ),
-                )
-                zf.writestr("logs/cleaning_audit_log.txt", "\n".join(audit))
-                zf.writestr("insights/insights.json", json.dumps(insights, indent=2, default=str))
-
-                # Raw + cleaned snapshots
-                if df_raw is not None:
-                    zf.writestr("data/raw_dataset.csv", df_raw.to_csv(index=False))
-                zf.writestr("data/cleaned_dataset.csv", cleaned.to_csv(index=False))
-
-                # Diff summary
-                if df_raw is not None:
-                    diff_summary = {
-                        "rows_before": int(df_raw.shape[0]),
-                        "rows_after": int(cleaned.shape[0]),
-                        "rows_removed": max(int(df_raw.shape[0]) - int(cleaned.shape[0]), 0),
-                        "columns_before": int(df_raw.shape[1]),
-                        "columns_after": int(cleaned.shape[1]),
-                        "columns_removed": max(int(df_raw.shape[1]) - int(cleaned.shape[1]), 0),
-                        "missing_before": int(df_raw.isna().sum().sum()),
-                        "missing_after": int(cleaned.isna().sum().sum()),
-                        "missing_fixed": max(
-                            int(df_raw.isna().sum().sum()) - int(cleaned.isna().sum().sum()), 0
-                        ),
-                        "duplicates_before": int(df_raw.duplicated().sum()),
-                        "duplicates_after": int(cleaned.duplicated().sum()),
-                    }
-                else:
-                    diff_summary = {
-                        "rows_before": int(cleaned.shape[0]),
-                        "rows_after": int(cleaned.shape[0]),
-                        "rows_removed": 0,
-                        "columns_before": int(cleaned.shape[1]),
-                        "columns_after": int(cleaned.shape[1]),
-                        "columns_removed": 0,
-                        "missing_before": int(cleaned.isna().sum().sum()),
-                        "missing_after": int(cleaned.isna().sum().sum()),
-                        "missing_fixed": 0,
-                        "duplicates_before": int(cleaned.duplicated().sum()),
-                        "duplicates_after": int(cleaned.duplicated().sum()),
-                    }
-                zf.writestr("diff/diff_summary.json", json.dumps(diff_summary, indent=2))
-
-                # Charts as lightweight HTML wrappers
-                for idx, chart in enumerate(results.get("charts", []), start=1):
-                    title = chart.get("title", f"chart_{idx}")
-                    safe = re.sub(r"[^a-zA-Z0-9_-]+", "_", title).strip("_") or f"chart_{idx}"
-                    img_b64 = chart.get("b64", "")
-                    html = (
-                        f"<html><body style='background:#0D1117;color:#E6EDF3;font-family:sans-serif;'>"
-                        f"<h2>{title}</h2>"
-                        f"<img alt='{title}' src='data:image/png;base64,{img_b64}' "
-                        f"style='max-width:100%;height:auto;border:1px solid #2b3440;border-radius:8px;'/>"
-                        f"</body></html>"
-                    )
-                    zf.writestr(f"charts/{idx:02d}_{safe}.html", html)
-
-            buffer.seek(0)
-            st.session_state["export_pack_bytes"] = buffer.getvalue()
-
-        st.success("✅ Export pack ready.")
-
-    if st.session_state.get("export_pack_bytes"):
-        st.download_button(
-            "⬇️ Export Pack (.zip)",
-            st.session_state["export_pack_bytes"],
-            file_name="dataforge_export_pack.zip",
-            mime="application/zip",
-            key="export_pack_download",
-        )
-        st.caption(
-            "Includes report, EDA story, chart HTML files, diff summary, cleaning log, "
-            "insights JSON, and data snapshots."
-        )
 
     # Multi-dataset comparison section
     if st.session_state.get("df2") is not None and df_raw is not None:
@@ -1149,6 +1520,40 @@ with t6:
         # Distribution charts
         for chart in comparison.get("distribution_charts", []):
             st.plotly_chart(chart["fig"], use_container_width=True)
+
+    # ── Feature 4: Export Pack ────────────────────────────────────────
+    st.divider()
+    st.markdown("### 📦 Export Pack (.zip)")
+    st.markdown(
+        "Download everything in one zip — report, EDA story, all charts, "
+        "cleaning diff, audit log, and insights JSON."
+    )
+    if st.button("🏗️ Build Export Pack", key="build_export"):
+        with st.spinner("Building your export pack..."):
+            diff_data  = st.session_state.get("diff_data") or                          generate_diff_view(df_raw, cleaned, audit)
+            eda_story  = st.session_state.get("eda_story") or                          generate_eda_story_local(df_raw, cleaned, insights, audit)
+            plotly_charts = results.get("charts", [])
+            zip_bytes = build_export_pack(
+                df_raw    = df_raw,
+                cleaned_df = cleaned,
+                insights   = insights,
+                audit_log  = audit,
+                report     = report,
+                eda_story  = eda_story,
+                charts     = plotly_charts,
+                diff       = diff_data,
+            )
+            st.session_state["export_zip"] = zip_bytes
+        st.success("✅ Export pack ready!")
+    if st.session_state.get("export_zip"):
+        st.download_button(
+            "⬇️ Download Export Pack (.zip)",
+            st.session_state["export_zip"],
+            "dataforge_export_pack.zip",
+            "application/zip",
+            key="dl_export_zip",
+            use_container_width=True,
+        )
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1345,6 +1750,53 @@ with t8:
                 st.session_state.pop("collab_room", None)
                 st.session_state.pop("collab_member", None)
                 st.rerun()
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 9 — CHALLENGE ME (Socratic Mode)
+# ════════════════════════════════════════════════════════════════════════════
+with t9:
+    if "results" not in st.session_state:
+        st.info("Run the DataForge pipeline first to unlock the Challenge Me quiz.")
+    else:
+        render_challenge_tab(
+            cleaned_df = cleaned,
+            insights   = insights,
+            audit_log  = audit,
+            gpt_client = gpt_client,
+            level      = level,
+            username   = st.session_state.get("username", ""),
+        )
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 10 — MY PROGRESS
+# ════════════════════════════════════════════════════════════════════════════
+with t10:
+    render_progress_tab(st.session_state.get("username", ""))
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 11 — GLOSSARY
+# ════════════════════════════════════════════════════════════════════════════
+with t11:
+    render_glossary_tab(
+        username   = st.session_state.get("username", ""),
+        gpt_client = gpt_client,
+    )
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 12 — CONVERSATION HISTORY
+# ════════════════════════════════════════════════════════════════════════════
+with t12:
+    st.markdown("### 💬 Conversation History")
+    st.markdown("All your interactions with the DataForge tutor this session.")
+    render_conversation_history()
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 13 — DATASET HISTORY
+# ════════════════════════════════════════════════════════════════════════════
+with t13:
+    st.markdown("### 📂 Dataset History")
+    st.markdown("All datasets you have analysed with DataForge.")
+    render_dataset_history(st.session_state.get("username", ""))
 
 # ── Final score ────────────────────────────────────────────────────────────
 st.divider()

@@ -1,95 +1,91 @@
-"""
-login_page.py — Streamlit login and registration UI.
-Call render_login_page() before anything else in app.py.
-"""
+# login_page.py
+# Login and Register UI — shown before app loads
+# Blocks app via st.stop() until authenticated
 
 import streamlit as st
-from auth import login_user, register_user
+from auth import register_user, login_user
 
 
 def render_login_page():
-    """
-    Renders the login/register gate.
-    Returns True if user is authenticated, False otherwise.
-    Call this at the TOP of app.py before rendering any tabs.
-    """
-
-    # Already logged in — pass through
     if st.session_state.get("authenticated"):
         return True
 
-    # ── Page styling ──────────────────────────────────────────────────────
     st.markdown("""
-        <div style="text-align:center; padding: 40px 0 10px 0">
-            <h1 style="font-size:48px">🔬 DataForge</h1>
-            <p style="color:#94a3b8; font-size:18px">
-                Autonomous Data Science · Powered by AI
-            </p>
-        </div>
+    <style>
+        .stApp { background-color:#0D1117; color:#F0F6FC; }
+        section[data-testid="stSidebar"] { display:none; }
+        .stButton>button {
+            background-color:#02C39A; color:#0D1117;
+            font-weight:700; border:none; border-radius:8px;
+            width:100%; padding:.6rem;
+        }
+        .stButton>button:hover { background-color:#028090; color:white; }
+    </style>
     """, unsafe_allow_html=True)
 
-    st.divider()
+    st.markdown('<br><br>', unsafe_allow_html=True)
 
-    # ── Tabs: Login / Register ────────────────────────────────────────────
-    login_tab, register_tab = st.tabs(["🔑 Login", "📝 Create Account"])
+    st.markdown("""
+    <div style="text-align:center;margin-bottom:1.5rem;">
+        <div style="font-size:3rem;font-weight:900;color:#02C39A;">🎓 DataForge</div>
+        <div style="color:#8B949E;font-size:1rem;">AI Data Science Tutor</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # ── LOGIN ─────────────────────────────────────────────────────────────
-    with login_tab:
-        st.subheader("Welcome back")
+    tab_login, tab_register = st.tabs(["🔑 Login", "📝 Register"])
 
-        username = st.text_input("Username", key="login_username", placeholder="Enter your username")
-        password = st.text_input("Password", type="password", key="login_password", placeholder="Enter your password")
-
-        if st.button("Login", type="primary", use_container_width=True, key="login_btn"):
+    with tab_login:
+        st.markdown("#### Welcome back")
+        username = st.text_input("Username", placeholder="your username",
+                                  key="login_username")
+        password = st.text_input("Password", type="password",
+                                  placeholder="your password",
+                                  key="login_password")
+        if st.button("Login →", key="login_btn"):
             if not username or not password:
-                st.warning("Please fill in both fields.")
+                st.error("Please enter both username and password.")
             else:
-                success, message, user_data = login_user(username, password)
-                if success:
+                result = login_user(username, password)
+                if result["success"]:
                     st.session_state["authenticated"] = True
-                    st.session_state["current_user"] = user_data
-                    st.success(message)
+                    st.session_state["username"]      = result["username"]
+                    st.success(f"Welcome back, {result['username']}!")
                     st.rerun()
                 else:
-                    st.error(message)
+                    st.error(result["error"])
 
-    # ── REGISTER ──────────────────────────────────────────────────────────
-    with register_tab:
-        st.subheader("Create your account")
-
-        new_display = st.text_input("Display Name", key="reg_display", placeholder="e.g. Abdulmalik")
-        new_username = st.text_input("Username", key="reg_username", placeholder="Choose a username")
-        new_password = st.text_input("Password", type="password", key="reg_password", placeholder="At least 6 characters")
-        confirm_password = st.text_input("Confirm Password", type="password", key="reg_confirm", placeholder="Repeat your password")
-
-        if st.button("Create Account", type="primary", use_container_width=True, key="register_btn"):
-            if not new_username or not new_password or not confirm_password:
-                st.warning("Please fill in all fields.")
-            elif new_password != confirm_password:
+    with tab_register:
+        st.markdown("#### Create your account")
+        new_username = st.text_input("Choose a username",
+                                      placeholder="at least 3 characters",
+                                      key="reg_username")
+        new_password = st.text_input("Choose a password", type="password",
+                                      placeholder="at least 6 characters",
+                                      key="reg_password")
+        confirm_pw   = st.text_input("Confirm password", type="password",
+                                      placeholder="repeat your password",
+                                      key="reg_confirm")
+        if st.button("Create Account →", key="register_btn"):
+            if not new_username or not new_password or not confirm_pw:
+                st.error("Please fill in all fields.")
+            elif new_password != confirm_pw:
                 st.error("Passwords do not match.")
             else:
-                success, message = register_user(new_username, new_password, new_display)
-                if success:
-                    st.success(message + " Please log in.")
+                result = register_user(new_username, new_password)
+                if result["success"]:
+                    st.success("Account created! You can now log in.")
                 else:
-                    st.error(message)
+                    st.error(result["error"])
 
+    st.stop()
     return False
 
 
-def render_user_header():
-    """
-    Renders a small header bar showing the logged-in user with a logout button.
-    Call this at the TOP of your main app content (after the login gate passes).
-    """
-    user = st.session_state.get("current_user", {})
-    display_name = user.get("display_name", "User")
-
-    col1, col2 = st.columns([8, 1])
-    with col1:
-        st.markdown(f"👤 Logged in as **{display_name}**")
+def render_logout_button():
+    col1, col2 = st.columns([5, 1])
     with col2:
         if st.button("Logout", key="logout_btn"):
-            for key in ["authenticated", "current_user"]:
+            for key in ["authenticated", "username"]:
                 st.session_state.pop(key, None)
             st.rerun()
+    return col1
