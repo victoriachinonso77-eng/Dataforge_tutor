@@ -227,3 +227,8 @@ def _fallback_grade(answer, concept):
                            explanation="Auto-graded — add API key for detailed feedback.",
                            follow_up="Can you add more specific detail?",
                            concept_tag=concept)
+
+# Alias for compatibility
+grade_answer = evaluate_answer
+get_session_summary = compute_session_result
+

@@ -1002,7 +1002,7 @@ with t1:
 
     # ── Feature 3: Diff View ──────────────────────────────────────────
     st.divider()
-    if st.button("🔄 Show Before vs After Diff", key="show_diff"):
+    if st.button("🔄 Show Before vs After Diff", key="btn_show_diff"):
         st.session_state["show_diff"] = True
     if st.session_state.get("show_diff"):
         if "diff_data" not in st.session_state:
