@@ -1,5 +1,5 @@
 """
-Agent 7 — Socratic Teaching Agent (Groq LLaMA version)
+Agent 7 — Socratic Teaching Agent (OpenAI version)
 """
 
 import json
@@ -7,12 +7,12 @@ import os
 import re
 from dataclasses import dataclass
 from typing import Optional
-from groq import Groq
+from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 @dataclass
@@ -92,26 +92,26 @@ Expected keywords/ideas: {question.expected_keywords}
 Student's answer:
 "{user_answer}"
 
-STRICT scoring rules — follow these exactly:
-- 0   : Answer is blank, completely irrelevant, or does not address the question at all
-- 1-2 : Answer mentions the topic area but shows fundamental misunderstanding
-- 3-4 : Answer is on the right topic but missing all key technical reasoning
-- 5-6 : Answer shows partial understanding — correct idea but lacks depth or precision
-- 7-8 : Answer is mostly correct with minor gaps or missing one key point
-- 9-10: Answer is complete, precise, technically accurate, and shows deep understanding
+STRICT scoring rules:
+- 0   : Blank, irrelevant, or does not address the question at all
+- 1-2 : Mentions topic but shows fundamental misunderstanding
+- 3-4 : Right topic but missing all key technical reasoning
+- 5-6 : Partial understanding — correct idea but lacks depth
+- 7-8 : Mostly correct with minor gaps
+- 9-10: Complete, precise, technically accurate
 
-PENALTIES — automatically deduct points for:
-- Generic textbook answers that do not reference this specific dataset or question: -3 points
-- Answering a different question than what was asked: score must be 0-2 maximum
-- Correct keywords used but in the wrong context: -2 points
-- No mention of at least one expected keyword or idea: cap score at 4 maximum
+PENALTIES:
+- Generic answers not referencing this dataset: -3 points
+- Answering a different question: score 0-2 maximum
+- Keywords used in wrong context: -2 points
+- No expected keyword mentioned: cap at 4 maximum
 
 Return ONLY valid JSON:
 {{
   "score": <integer 0-10>,
   "is_correct": <true if score >= 7>,
-  "explanation": "<2-4 sentences: be specific about what was wrong or missing>",
-  "follow_up": "<one follow-up question to deepen thinking, or null>",
+  "explanation": "<2-4 sentences: specific about what was wrong or missing>",
+  "follow_up": "<one follow-up question, or null>",
   "concept_tag": "{question.concept}"
 }}
 """.strip()
@@ -133,7 +133,7 @@ Return ONLY plain text, no JSON, no markdown.
 def generate_questions(analysis_summary: dict, difficulty: str = "intermediate", n: int = 5) -> list:
     prompt = _build_question_prompt(analysis_summary, difficulty, n)
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "You are a Socratic data science tutor. Return only valid JSON."},
             {"role": "user", "content": prompt}
@@ -153,7 +153,7 @@ def evaluate_answer(question, user_answer: str, analysis_summary: dict, prior_sc
         return AnswerFeedback(score=0, is_correct=False, explanation="No answer provided.", follow_up=question.hint, concept_tag=question.concept)
     prompt = _build_evaluation_prompt(question, user_answer, analysis_summary, prior_score)
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "You are a strict data science examiner. Return only valid JSON."},
             {"role": "user", "content": prompt}
@@ -184,7 +184,7 @@ def compute_session_result(feedbacks: list, analysis_summary: dict, difficulty: 
         badge = "🌱 Novice"
     prompt = _build_summary_prompt(feedbacks, analysis_summary, difficulty)
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": "You are an encouraging data science tutor."},
             {"role": "user", "content": prompt}

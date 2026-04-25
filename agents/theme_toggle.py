@@ -1,6 +1,6 @@
 
 # agents/theme_toggle.py — Upgraded Dark/Light Mode Toggle
-=======
+# =======
 
 import streamlit as st
 import json

@@ -12,6 +12,12 @@ import zipfile
 import re
 from dotenv import load_dotenv
 
+from challenge_tab import render_challenge_tab
+from login_page import render_login_page, render_user_header
+from progress_tab import render_progress_tab
+from login_page import render_login_page, render_user_header
+from progress_tab import render_progress_tab
+
 # ── Load keys from .env once at startup ───────────────────────────────────
 load_dotenv()
 OPENAI_KEY  = os.getenv("OPENAI_API_KEY", "")
@@ -46,6 +52,10 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+if not render_login_page():
+    st.stop()
+
+render_user_header()
 
 # ── CSS ────────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -473,10 +483,10 @@ st.markdown("")
 # ══════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════
-t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs([
+t1, t2, t3, t4, t5, t6, t7, t8, t9, t10 = st.tabs([
     "🧹 Cleaning", "📊 Analysis", "📈 Visualisation",
     "🤖 AutoML", "💬 Ask the Tutor", "📝 Report",
-    "⚖️ Bias Report", "🤝 Collaborate",
+    "⚖️ Bias Report", "🤝 Collaborate", "🏋️ Challenge Me", "📊 My Progress",
 ])
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1345,6 +1355,23 @@ with t8:
                 st.session_state.pop("collab_room", None)
                 st.session_state.pop("collab_member", None)
                 st.rerun()
+
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 9 — CHALLENGE ME
+# ════════════════════════════════════════════════════════════════════════════
+with t9:
+    render_challenge_tab(
+        analysis_result=st.session_state.get("results"),
+        df=st.session_state["results"]["cleaned_df"] if "results" in st.session_state else None,
+    )
+ 
+ 
+# ════════════════════════════════════════════════════════════════════════════
+# TAB 10 — MY PROGRESS
+# ════════════════════════════════════════════════════════════════════════════
+with t10:
+    render_progress_tab()
+ 
 
 # ── Final score ────────────────────────────────────────────────────────────
 st.divider()
