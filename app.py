@@ -630,7 +630,7 @@ def _render_chat_mode(level, use_gpt, gpt_client, use_live):
         scols = st.columns(3)
         for i, sug in enumerate(suggestions):
             with scols[i % 3]:
-                if st.button(sug, key=f"chatsugg_{i}", use_container_width=True):
+                if st.button(sug, key=f"chatsugg_{i}", width="stretch"):
                     st.session_state["_pending_msg"] = sug
                     st.rerun()
         st.divider()
@@ -727,7 +727,7 @@ def _render_chat_mode(level, use_gpt, gpt_client, use_live):
                         if insights.get("numeric_summary"):
                             st.dataframe(
                                 pd.DataFrame(insights["numeric_summary"]).T.round(3),
-                                use_container_width=True)
+                                width="stretch")
                         if insights.get("strong_correlations"):
                             st.markdown("**Correlations found:**")
                             for p in insights["strong_correlations"]:
@@ -743,7 +743,7 @@ def _render_chat_mode(level, use_gpt, gpt_client, use_live):
                         for ci, chart in enumerate(charts):
                             st.markdown(f"**{chart['title']}**")
                             st.plotly_chart(chart["fig"],
-                                use_container_width=True,
+                                width="stretch",
                                 key=f"chat_chart_{msg_idx}_{ci}",
                                             config={"displayModeBar": True})
 
@@ -764,7 +764,7 @@ def _render_chat_mode(level, use_gpt, gpt_client, use_live):
                             st.dataframe(
                                 mdf.style.background_gradient(
                                     subset=["score"], cmap="YlGn"),
-                                use_container_width=True)
+                                width="stretch")
                         if ml_res.get("feature_importance"):
                             import plotly.express as px
                             fi_df = pd.DataFrame(
@@ -778,7 +778,7 @@ def _render_chat_mode(level, use_gpt, gpt_client, use_live):
                                 plot_bgcolor="white", paper_bgcolor="white",
                                 showlegend=False, coloraxis_showscale=False,
                                 yaxis=dict(autorange="reversed"))
-                            st.plotly_chart(fig, use_container_width=True)
+                            st.plotly_chart(fig, width="stretch")
 
                 # Report
                 report = results.get("report")
@@ -842,7 +842,7 @@ def _render_chat_mode(level, use_gpt, gpt_client, use_live):
             label_visibility="collapsed",
             key="chatbot_input")
     with ci2:
-        send = st.button("Send ➤", key="chatbot_send", use_container_width=True)
+        send = st.button("Send ➤", key="chatbot_send", width="stretch")
 
     # Use a pending message flag to prevent double processing
     if send and user_input.strip():
@@ -1043,7 +1043,7 @@ elif uploaded:
 
 if df_raw is not None:
     with st.expander("👀 Preview raw data (first 10 rows)", expanded=True):
-        st.dataframe(df_raw.head(10), use_container_width=True)
+        st.dataframe(df_raw.head(10), width="stretch")
         st.markdown(f"> 📖 Your dataset has **{df_raw.shape[0]:,} rows** and "
                     f"**{df_raw.shape[1]} columns**. Empty cells = missing values DataForge will fix.")
 
@@ -1194,7 +1194,7 @@ with t1:
         speak(st.session_state["lesson_audit"], label="Listen to Explanation", key_suffix="audit_exp")
 
     st.markdown("### ✅ Your Cleaned Dataset")
-    st.dataframe(cleaned, use_container_width=True)
+    st.dataframe(cleaned, width="stretch")
     st.download_button("⬇️ Download Cleaned CSV",
                        cleaned.to_csv(index=False).encode(),
                        "cleaned_data.csv", "text/csv")
@@ -1258,7 +1258,7 @@ with t2:
     if insights.get("numeric_summary"):
         st.markdown("### 📊 Your Dataset Statistics")
         st.dataframe(pd.DataFrame(insights["numeric_summary"]).T.round(3),
-                     use_container_width=True)
+                     width="stretch")
         if level == "beginner":
             st.markdown("> 💡 count = total values · mean = average · std = spread · "
                         "25%/50%/75% = quartiles · min/max = range")
@@ -1339,7 +1339,7 @@ with t3:
                     st.markdown(get_lesson("visualisation", lesson_key, level))
 
             st.markdown(f"**{chart['title']}**")
-            st.plotly_chart(chart["fig"], use_container_width=True,
+            st.plotly_chart(chart["fig"], width="stretch",
                             key=f"pipe_chart_{chart['title'].replace(' ','_')}",
                             config={"displayModeBar": True})
 
@@ -1454,7 +1454,7 @@ with t4:
             st.markdown("### 🏁 All Models Compared")
             mdf = pd.DataFrame(ml_res["models"])
             st.dataframe(mdf.style.background_gradient(subset=["score"], cmap="YlGn"),
-                         use_container_width=True)
+                         width="stretch")
 
             with st.expander("📖 What are all these algorithms?"):
                 for row in ml_res["models"]:
@@ -1475,7 +1475,7 @@ with t4:
                 fig.update_layout(plot_bgcolor="white", paper_bgcolor="white",
                                   showlegend=False, coloraxis_showscale=False,
                                   yaxis=dict(autorange="reversed"))
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
             lesson_box(get_lesson("automl", "metrics", level))
             show_resources("automl", level)
@@ -1724,10 +1724,10 @@ with t6:
                                  "Mean": vals["mean"], "Std": vals["std"],
                                  "Median": vals["median"]})
             if rows:
-                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+                st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
         # Distribution charts
         for chart in comparison.get("distribution_charts", []):
-            st.plotly_chart(chart["fig"], use_container_width=True)
+            st.plotly_chart(chart["fig"], width="stretch")
 
     # ── Feature 4: Export Pack ────────────────────────────────────────
     st.divider()
@@ -1760,7 +1760,7 @@ with t6:
             "dataforge_export_pack.zip",
             "application/zip",
             key="dl_export_zip",
-            use_container_width=True,
+            width="stretch",
         )
 
 
