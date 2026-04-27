@@ -11,16 +11,103 @@ DARK_THEME = """
         * { transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
         .stApp { background-color: #0E1117 !important; color: #FAFAFA !important; }
         .stSidebar { background-color: #161B22 !important; }
-        .stTextInput > div > div > input { background-color: #21262D !important; color: #FAFAFA !important; border-color: #30363D !important; }
-        .stSelectbox > div > div { background-color: #21262D !important; color: #FAFAFA !important; }
-        .stDataFrame { background-color: #161B22 !important; }
         .block-container { background-color: #0E1117 !important; }
         h1, h2, h3 { color: #58A6FF !important; }
-        .stMetric { background-color: #161B22 !important; border-radius: 8px; padding: 10px; border: 1px solid #30363D; }
-        .stAlert { border-radius: 8px; }
-        .stExpander { border-color: #30363D !important; }
         p, li, label { color: #FAFAFA !important; }
         .stMarkdown { color: #FAFAFA !important; }
+        .stDataFrame { background-color: #161B22 !important; }
+        .stMetric { background-color: #161B22 !important; border-radius: 8px; padding: 10px; border: 1px solid #30363D; }
+        .stAlert { border-radius: 8px; }
+        .stCheckbox label { color: #FAFAFA !important; }
+        .stCaption { color: #8B949E !important; }
+        div[data-testid="stMetricValue"] { color: #58A6FF !important; }
+        div[data-testid="stMetricLabel"] { color: #8B949E !important; }
+
+        /* Text inputs */
+        .stTextInput > div > div > input {
+            background-color: #21262D !important;
+            color: #FAFAFA !important;
+            border-color: #30363D !important;
+        }
+        .stTextArea > div > div > textarea {
+            background-color: #21262D !important;
+            color: #FAFAFA !important;
+            border-color: #30363D !important;
+        }
+
+        /* Selectbox */
+        .stSelectbox > div > div {
+            background-color: #21262D !important;
+            color: #FAFAFA !important;
+        }
+        div[data-baseweb="select"] > div {
+            background-color: #21262D !important;
+            color: #FAFAFA !important;
+            border-color: #30363D !important;
+        }
+        div[data-baseweb="select"] span {
+            color: #FAFAFA !important;
+        }
+        div[data-baseweb="popover"] {
+            background-color: #21262D !important;
+            color: #FAFAFA !important;
+        }
+        div[data-baseweb="menu"] {
+            background-color: #21262D !important;
+        }
+        div[data-baseweb="menu"] li {
+            color: #FAFAFA !important;
+        }
+        div[data-baseweb="menu"] li:hover {
+            background-color: #30363D !important;
+        }
+
+        /* Buttons */
+        .stButton > button {
+            background-color: #21262D !important;
+            color: #FAFAFA !important;
+            border: 1px solid #30363D !important;
+            border-radius: 8px !important;
+        }
+        .stButton > button:hover {
+            background-color: #30363D !important;
+            color: #FAFAFA !important;
+        }
+
+        /* Expanders */
+        details {
+            background-color: #21262D !important;
+            border: 1px solid #30363D !important;
+            border-radius: 8px !important;
+        }
+        details > summary {
+            color: #FAFAFA !important;
+            background-color: #21262D !important;
+            padding: 8px !important;
+            border-radius: 8px !important;
+        }
+        details > summary:hover {
+            background-color: #30363D !important;
+        }
+        .stExpander {
+            border: 1px solid #30363D !important;
+            border-radius: 8px !important;
+            background-color: #21262D !important;
+        }
+
+        /* Tabs */
+        .stTabs [data-baseweb="tab-list"] {
+            background-color: #161B22 !important;
+        }
+        .stTabs [data-baseweb="tab"] {
+            color: #8B949E !important;
+        }
+        .stTabs [aria-selected="true"] {
+            color: #58A6FF !important;
+            border-bottom-color: #58A6FF !important;
+        }
+
+        /* Theme badge */
         .theme-badge {
             background: #58A6FF; color: #0E1117;
             padding: 4px 12px; border-radius: 20px;
@@ -36,6 +123,16 @@ LIGHT_RESET = """
             background: #1F3864; color: white;
             padding: 4px 12px; border-radius: 20px;
             font-size: 13px; display: inline-block; margin-bottom: 10px;
+        }
+        .stButton > button {
+            background-color: #1F3864 !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 8px !important;
+        }
+        .stButton > button:hover {
+            background-color: #2a4a8a !important;
+            color: white !important;
         }
     </style>
 """
@@ -81,19 +178,16 @@ def _get_user_theme(username: str) -> str:
 def render_theme_toggle(st) -> str:
     """
     Renders a theme toggle in the sidebar.
-    - Light mode uses Streamlit's default appearance (no aggressive CSS override)
+    - Light mode uses Streamlit default appearance
     - Dark mode uses custom dark CSS
-    - Remembers preference per user across sessions (if logged in)
+    - Remembers preference per user across sessions
     - Smooth animated transition between themes
     Returns the current theme: 'light' or 'dark'.
     """
-
     username = st.session_state.get("username", None)
 
-    # ── Step 1: Inject system detection JS ──
     st.markdown(SYSTEM_DETECTION_JS, unsafe_allow_html=True)
 
-    # ── Step 2: Determine initial theme ──
     if "theme" not in st.session_state:
         if username:
             saved = _get_user_theme(username)
@@ -101,11 +195,9 @@ def render_theme_toggle(st) -> str:
         else:
             st.session_state["theme"] = "light"
 
-    # ── Step 3: Render toggle in sidebar ──
     with st.sidebar:
         st.markdown("---")
         current = st.session_state["theme"]
-
         badge = "☀️ Light Mode" if current == "light" else "🌙 Dark Mode"
         label = "🌙 Switch to Dark Mode" if current == "light" else "☀️ Switch to Light Mode"
 
@@ -114,21 +206,17 @@ def render_theme_toggle(st) -> str:
         if st.button(label, use_container_width=True, key="theme_toggle_btn"):
             new_theme = "dark" if current == "light" else "light"
             st.session_state["theme"] = new_theme
-
             if username:
                 _save_theme_pref(username, new_theme)
-
             st.rerun()
 
         if not username:
             st.caption("💡 Log in to save your theme preference.")
 
-    # ── Step 4: Apply CSS ──
     theme = st.session_state["theme"]
     if theme == "dark":
         st.markdown(DARK_THEME, unsafe_allow_html=True)
     else:
-        # Light mode — just apply minimal CSS, let Streamlit handle the rest
         st.markdown(LIGHT_RESET, unsafe_allow_html=True)
 
     return theme

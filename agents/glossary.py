@@ -26,18 +26,36 @@ GLOSSARY = {
         "related": ["Outlier", "Clustering"],
         "example": "A bank uses anomaly detection to flag a transaction of £5,000 when a customer usually spends £50."
     },
+    "Attention Mechanism": {
+        "definition": "A component in neural networks that allows the model to focus on the most relevant parts of the input when making predictions, rather than treating all inputs equally.",
+        "category": "Deep Learning",
+        "related": ["Transformer", "Neural Network", "Embeddings"],
+        "example": "When translating 'The cat sat on the mat', the attention mechanism focuses on 'cat' when generating the word for cat in French."
+    },
     "AutoML": {
         "definition": "Automated Machine Learning — automates the selection, training, and tuning of machine learning models with minimal human intervention.",
         "category": "ML Techniques",
-        "related": ["Hyperparameter", "Model", "Cross-Validation"],
+        "related": ["Hyperparameter Tuning", "Model", "Cross-Validation"],
         "example": "DataForge's AutoML tab automatically tries multiple algorithms and picks the best one for your dataset."
     },
     # ── B ──
+    "Backpropagation": {
+        "definition": "The algorithm used to train neural networks by calculating how much each weight contributed to the error and adjusting them accordingly using gradient descent.",
+        "category": "Deep Learning",
+        "related": ["Gradient Descent", "Neural Network", "Loss Function"],
+        "example": "Like marking an exam and tracing back through each question to understand where the student went wrong — then correcting their approach."
+    },
     "Bagging": {
         "definition": "An ensemble technique that trains multiple models on random subsets of the training data and combines their predictions to reduce variance.",
         "category": "ML Techniques",
         "related": ["Random Forest", "Ensemble Learning", "Overfitting"],
         "example": "Like asking 10 different doctors for a diagnosis — combining their opinions is more reliable than one alone."
+    },
+    "Batch Normalisation": {
+        "definition": "A technique that normalises the inputs of each layer in a neural network during training, making the network faster to train and more stable.",
+        "category": "Deep Learning",
+        "related": ["Neural Network", "Normalisation", "Gradient Descent"],
+        "example": "Like standardising scores across different exam papers so they are all on the same scale before comparing them."
     },
     "Bias": {
         "definition": "Systematic error in a dataset or model that produces unfair or inaccurate outcomes for certain groups.",
@@ -48,7 +66,7 @@ GLOSSARY = {
     "Boosting": {
         "definition": "An ensemble method that trains models sequentially, where each model focuses on correcting the errors of the previous one.",
         "category": "ML Techniques",
-        "related": ["Bagging", "Ensemble Learning", "XGBoost"],
+        "related": ["Bagging", "Ensemble Learning", "XGBoost", "Gradient Boosting"],
         "example": "Like a student who reviews only the questions they got wrong each time — focusing on weak spots."
     },
     "Box Plot": {
@@ -73,7 +91,7 @@ GLOSSARY = {
     "Confusion Matrix": {
         "definition": "A table comparing predicted labels against actual labels across True Positives, False Positives, True Negatives, and False Negatives.",
         "category": "Evaluation",
-        "related": ["Accuracy", "Precision", "Recall"],
+        "related": ["Accuracy", "Precision", "Recall", "F1 Score"],
         "example": "A confusion matrix for a disease test shows how many patients were correctly diagnosed vs misdiagnosed."
     },
     "Correlation": {
@@ -113,12 +131,24 @@ GLOSSARY = {
         "related": ["PCA", "Feature Selection"],
         "example": "Compressing 100 features down to 10 key components while keeping 95% of the information."
     },
+    "Dropout": {
+        "definition": "A regularisation technique for neural networks where randomly selected neurons are ignored during training to prevent overfitting.",
+        "category": "Deep Learning",
+        "related": ["Regularisation", "Neural Network", "Overfitting"],
+        "example": "Like randomly removing team members during practice so the team learns not to rely on any one person — making it more robust."
+    },
     # ── E ──
     "EDA": {
         "definition": "Exploratory Data Analysis — the process of summarising and visualising data to discover patterns before modelling.",
         "category": "Data Science",
         "related": ["Data Cleaning", "Visualisation", "Statistics"],
         "example": "Plotting distributions, checking correlations, and identifying outliers before building any model."
+    },
+    "Embeddings": {
+        "definition": "Dense numerical representations of categorical data or text in a continuous vector space, where similar items are placed closer together.",
+        "category": "Deep Learning",
+        "related": ["Transformer", "Neural Network", "Attention Mechanism"],
+        "example": "The words 'king' and 'queen' have similar embeddings because they are semantically related — their vectors are close in space."
     },
     "Ensemble Learning": {
         "definition": "Combining multiple machine learning models to produce better predictions than any single model alone.",
@@ -160,14 +190,26 @@ GLOSSARY = {
     "Feature Importance": {
         "definition": "A score indicating how much each input column contributed to a model's predictions.",
         "category": "ML Techniques",
-        "related": ["Random Forest", "Gradient Boosting", "Feature Selection"],
+        "related": ["Random Forest", "Gradient Boosting", "SHAP Values"],
         "example": "Feature importance of 0.45 for 'age' means age was the most influential predictor in the model."
     },
+    "Fine-tuning": {
+        "definition": "The process of taking a pre-trained model and further training it on a smaller, task-specific dataset to adapt it to a new task.",
+        "category": "Deep Learning",
+        "related": ["Transfer Learning", "Neural Network", "Embeddings"],
+        "example": "Taking GPT-4 which was trained on general text and fine-tuning it on medical records to create a medical AI assistant."
+    },
     # ── G ──
+    "Gradient Boosting": {
+        "definition": "A boosting technique that builds models sequentially, where each new model corrects the residual errors of the previous one using gradient descent.",
+        "category": "ML Techniques",
+        "related": ["Boosting", "XGBoost", "Loss Function", "Gradient Descent"],
+        "example": "Used widely in industry for tabular data — XGBoost and LightGBM are popular gradient boosting implementations."
+    },
     "Gradient Descent": {
         "definition": "An optimisation algorithm that iteratively adjusts model parameters to minimise the loss function.",
         "category": "Deep Learning",
-        "related": ["Loss Function", "Neural Network", "Epoch"],
+        "related": ["Loss Function", "Neural Network", "Learning Rate"],
         "example": "Like rolling a ball downhill — each step moves parameters in the direction that reduces error."
     },
     # ── H ──
@@ -183,10 +225,16 @@ GLOSSARY = {
         "related": ["Distribution", "Skewness"],
         "example": "A histogram of customer ages shows most customers are between 25 and 45."
     },
+    "Hyperparameter Tuning": {
+        "definition": "The process of finding the optimal hyperparameter values for a machine learning model to maximise its performance.",
+        "category": "ML Techniques",
+        "related": ["Hyperparameter", "Cross-Validation", "AutoML"],
+        "example": "Trying learning rates of 0.001, 0.01, and 0.1 to find which gives the best model accuracy."
+    },
     "Hyperparameter": {
         "definition": "A parameter set before training a model that controls the learning process. Different from parameters learned during training.",
         "category": "ML Techniques",
-        "related": ["Model", "Cross-Validation", "AutoML"],
+        "related": ["Model", "Cross-Validation", "Hyperparameter Tuning"],
         "example": "The number of trees in a Random Forest is a hyperparameter — you set it before training begins."
     },
     # ── I ──
@@ -234,6 +282,12 @@ GLOSSARY = {
         "related": ["GPT-4", "Multi-Agent", "Orchestrator"],
         "example": "DataForge uses LangChain to coordinate its pipeline agents and route user requests intelligently."
     },
+    "Learning Rate": {
+        "definition": "A hyperparameter that controls how much the model's weights are adjusted with each training step. Too high causes instability, too low causes slow learning.",
+        "category": "Deep Learning",
+        "related": ["Gradient Descent", "Hyperparameter", "Neural Network"],
+        "example": "A learning rate of 0.001 means weights are updated by 0.1% of the gradient each step — small but stable."
+    },
     "Linear Regression": {
         "definition": "A model that predicts a continuous numeric output by fitting a straight line through the data.",
         "category": "ML Techniques",
@@ -243,13 +297,13 @@ GLOSSARY = {
     "Logistic Regression": {
         "definition": "Despite the name, a classification algorithm that predicts the probability of a binary outcome using a sigmoid function.",
         "category": "ML Techniques",
-        "related": ["Classification", "Linear Regression"],
+        "related": ["Classification", "Linear Regression", "Softmax"],
         "example": "Predicting the probability that a student passes (1) or fails (0) based on hours studied."
     },
     "Loss Function": {
         "definition": "A function that measures how far a model's predictions are from the true values. The model is trained by minimising this.",
         "category": "Core Concepts",
-        "related": ["Gradient Descent", "Overfitting"],
+        "related": ["Gradient Descent", "Overfitting", "Backpropagation"],
         "example": "Mean Squared Error measures the average squared difference between predicted and actual house prices."
     },
     # ── M ──
@@ -293,7 +347,7 @@ GLOSSARY = {
     "Neural Network": {
         "definition": "A computing system loosely inspired by the human brain, consisting of layers of interconnected nodes that learn from data.",
         "category": "Deep Learning",
-        "related": ["Deep Learning", "Epoch", "Gradient Descent"],
+        "related": ["Deep Learning", "Backpropagation", "Gradient Descent"],
         "example": "A neural network recognises handwritten digits by learning pixel patterns from thousands of examples."
     },
     "Normal Distribution": {
@@ -305,7 +359,7 @@ GLOSSARY = {
     "Normalisation": {
         "definition": "Scaling numerical features to a standard range (usually 0 to 1) so no single feature dominates due to its magnitude.",
         "category": "Data Science",
-        "related": ["Standardisation", "Feature Engineering"],
+        "related": ["Standardisation", "Feature Engineering", "Batch Normalisation"],
         "example": "Age (0-100) and income (0-100,000) are on very different scales — normalisation brings them to the same range."
     },
     "Null Value": {
@@ -324,7 +378,7 @@ GLOSSARY = {
     "Overfitting": {
         "definition": "When a model learns the training data too well including noise and fails to generalise to new data.",
         "category": "Core Concepts",
-        "related": ["Underfitting", "Cross-Validation", "Regularisation"],
+        "related": ["Underfitting", "Regularisation", "Cross-Validation"],
         "example": "A student who memorises exam answers but cannot apply knowledge to new questions — performs perfectly in training, fails in testing."
     },
     # ── P ──
@@ -352,6 +406,12 @@ GLOSSARY = {
         "related": ["Recall", "F1 Score", "Confusion Matrix"],
         "example": "A cancer test with 99% precision means 99% of positive results are true cases — very few false alarms."
     },
+    "Precision-Recall Curve": {
+        "definition": "A graph showing the trade-off between precision and recall at different classification thresholds. Useful for imbalanced datasets.",
+        "category": "Evaluation",
+        "related": ["Precision", "Recall", "ROC-AUC", "F1 Score"],
+        "example": "A fraud detector's precision-recall curve shows that increasing recall to catch more fraud comes at the cost of more false alarms."
+    },
     "Principal Component Analysis (PCA)": {
         "definition": "A dimensionality reduction technique that transforms features into uncorrelated components capturing maximum variance.",
         "category": "ML Techniques",
@@ -377,6 +437,12 @@ GLOSSARY = {
         "related": ["Precision", "F1 Score", "Confusion Matrix"],
         "example": "A fraud detector with high recall catches most fraud cases — missing fraud is more costly than a false alarm."
     },
+    "Regularisation": {
+        "definition": "Techniques that add a penalty to the loss function to discourage overly complex models and prevent overfitting. Common types include L1 (Lasso) and L2 (Ridge).",
+        "category": "ML Techniques",
+        "related": ["Overfitting", "Loss Function", "Dropout"],
+        "example": "L2 regularisation adds the sum of squared weights to the loss — pushing the model to keep weights small and simple."
+    },
     "Regression": {
         "definition": "A supervised learning task where the model predicts a continuous numeric output.",
         "category": "ML Techniques",
@@ -386,7 +452,7 @@ GLOSSARY = {
     "ROC-AUC": {
         "definition": "Area Under the ROC Curve — measures a model's ability to distinguish between classes across all classification thresholds.",
         "category": "Evaluation",
-        "related": ["Precision", "Recall", "Accuracy"],
+        "related": ["Precision", "Recall", "Precision-Recall Curve"],
         "example": "AUC = 0.97 means the model correctly ranks a positive case above a negative case 97% of the time."
     },
     # ── S ──
@@ -396,11 +462,23 @@ GLOSSARY = {
         "related": ["Python", "Machine Learning", "Pandas"],
         "example": "DataForge AutoML agent uses scikit-learn to train and compare multiple algorithms on your dataset."
     },
+    "SHAP Values": {
+        "definition": "SHapley Additive exPlanations — a method to explain individual model predictions by calculating each feature's contribution to the output.",
+        "category": "ML Techniques",
+        "related": ["Feature Importance", "Explainability", "Bias"],
+        "example": "SHAP shows that for a loan rejection, 'low income' contributed -0.4 and 'high debt' contributed -0.3 to the decision."
+    },
     "Skewness": {
         "definition": "Measures the asymmetry of a distribution. Positive skew = long right tail. Negative skew = long left tail.",
         "category": "Statistics",
         "related": ["Normal Distribution", "Mean", "Median"],
         "example": "Income data is positively skewed — most earn average wages but a few earn millions, pulling the tail right."
+    },
+    "Softmax": {
+        "definition": "An activation function that converts raw model outputs into probabilities that sum to 1, used in the final layer of multi-class classification models.",
+        "category": "Deep Learning",
+        "related": ["Neural Network", "Classification", "Logistic Regression"],
+        "example": "A model classifying images into cat, dog, or bird might output softmax probabilities of 0.7, 0.2, 0.1 — cat is most likely."
     },
     "Standard Deviation": {
         "definition": "Measures how spread out values are around the mean. Large std = high variability.",
@@ -448,8 +526,14 @@ GLOSSARY = {
     "Transfer Learning": {
         "definition": "Using a model pre-trained on one task as the starting point for a model on a different but related task.",
         "category": "Deep Learning",
-        "related": ["Neural Network"],
+        "related": ["Fine-tuning", "Neural Network"],
         "example": "A model trained on millions of images is fine-tuned to recognise specific medical scans."
+    },
+    "Transformer": {
+        "definition": "A deep learning architecture based entirely on attention mechanisms, without recurrence. The foundation of modern large language models like GPT-4 and BERT.",
+        "category": "Deep Learning",
+        "related": ["Attention Mechanism", "Embeddings", "Fine-tuning"],
+        "example": "GPT-4, BERT, and the models powering DataForge are all transformer-based architectures."
     },
     # ── U ──
     "Underfitting": {
@@ -481,7 +565,7 @@ GLOSSARY = {
     "XGBoost": {
         "definition": "An optimised gradient boosting algorithm known for its speed and performance. Widely used in data science competitions.",
         "category": "ML Techniques",
-        "related": ["Boosting", "Ensemble Learning", "Random Forest"],
+        "related": ["Gradient Boosting", "Boosting", "Ensemble Learning"],
         "example": "XGBoost consistently wins Kaggle competitions — it combines speed, accuracy, and handling of missing values."
     },
 }
@@ -590,9 +674,10 @@ def render_glossary_tab(username="", gpt_client=None):
         filtered[term] = data
 
     # ── STATS BAR ──
-    st.markdown(f"**{len(filtered)} term(s)** | "
-                f"✅ {sum(1 for s in statuses.values() if s=='know')} known · "
-                f"📚 {sum(1 for s in statuses.values() if s=='learning')} still learning")
+    total = len(GLOSSARY)
+    known = sum(1 for s in statuses.values() if s == 'know')
+    learning = sum(1 for s in statuses.values() if s == 'learning')
+    st.markdown(f"**{len(filtered)} of {total} terms** | ✅ {known} known · 📚 {learning} still learning")
 
     if not filtered:
         if show_learning:
