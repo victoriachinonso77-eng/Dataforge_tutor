@@ -27,7 +27,7 @@ GLOSSARY = {
         "example": "A bank uses anomaly detection to flag a transaction of £5,000 when a customer usually spends £50."
     },
     "Attention Mechanism": {
-        "definition": "A component in neural networks that allows the model to focus on the most relevant parts of the input when making predictions, rather than treating all inputs equally.",
+        "definition": "A component in neural networks that allows the model to focus on the most relevant parts of the input when making predictions.",
         "category": "Deep Learning",
         "related": ["Transformer", "Neural Network", "Embeddings"],
         "example": "When translating 'The cat sat on the mat', the attention mechanism focuses on 'cat' when generating the word for cat in French."
@@ -40,7 +40,7 @@ GLOSSARY = {
     },
     # ── B ──
     "Backpropagation": {
-        "definition": "The algorithm used to train neural networks by calculating how much each weight contributed to the error and adjusting them accordingly using gradient descent.",
+        "definition": "The algorithm used to train neural networks by calculating how much each weight contributed to the error and adjusting them using gradient descent.",
         "category": "Deep Learning",
         "related": ["Gradient Descent", "Neural Network", "Loss Function"],
         "example": "Like marking an exam and tracing back through each question to understand where the student went wrong — then correcting their approach."
@@ -60,7 +60,7 @@ GLOSSARY = {
     "Bias": {
         "definition": "Systematic error in a dataset or model that produces unfair or inaccurate outcomes for certain groups.",
         "category": "Ethics",
-        "related": ["Fairness", "Proxy Variable", "Class Imbalance"],
+        "related": ["Fairness", "Proxy Variable"],
         "example": "A hiring model trained on historical data may disadvantage women if they were underrepresented in past hiring."
     },
     "Boosting": {
@@ -97,13 +97,13 @@ GLOSSARY = {
     "Correlation": {
         "definition": "Measures the strength and direction of a linear relationship between two variables. r ranges from -1 to +1.",
         "category": "Statistics",
-        "related": ["Causation", "Scatter Plot", "Multicollinearity"],
+        "related": ["Causation", "Multicollinearity"],
         "example": "r = 0.9 between hours studied and exam score means a strong positive relationship — more study, higher score."
     },
     "Cross-Validation": {
         "definition": "A technique to estimate model performance by splitting data into multiple train/test subsets and averaging results.",
         "category": "Evaluation",
-        "related": ["Train/Test Split", "Overfitting", "Generalisation"],
+        "related": ["Train/Test Split", "Overfitting"],
         "example": "5-fold CV splits data into 5 parts, trains on 4, tests on 1, repeated 5 times — more reliable than one split."
     },
     # ── D ──
@@ -135,7 +135,7 @@ GLOSSARY = {
         "definition": "A regularisation technique for neural networks where randomly selected neurons are ignored during training to prevent overfitting.",
         "category": "Deep Learning",
         "related": ["Regularisation", "Neural Network", "Overfitting"],
-        "example": "Like randomly removing team members during practice so the team learns not to rely on any one person — making it more robust."
+        "example": "Like randomly removing team members during practice so the team learns not to rely on any one person."
     },
     # ── E ──
     "EDA": {
@@ -148,7 +148,7 @@ GLOSSARY = {
         "definition": "Dense numerical representations of categorical data or text in a continuous vector space, where similar items are placed closer together.",
         "category": "Deep Learning",
         "related": ["Transformer", "Neural Network", "Attention Mechanism"],
-        "example": "The words 'king' and 'queen' have similar embeddings because they are semantically related — their vectors are close in space."
+        "example": "The words 'king' and 'queen' have similar embeddings because they are semantically related."
     },
     "Ensemble Learning": {
         "definition": "Combining multiple machine learning models to produce better predictions than any single model alone.",
@@ -159,7 +159,7 @@ GLOSSARY = {
     "EU AI Act": {
         "definition": "European regulation (2024) requiring AI systems to be transparent, explainable, and free from discriminatory bias.",
         "category": "Ethics",
-        "related": ["Bias", "Fairness", "Explainability"],
+        "related": ["Bias", "Fairness"],
         "example": "A hospital using AI for diagnosis must document bias checks and provide explanations for decisions."
     },
     # ── F ──
@@ -172,7 +172,7 @@ GLOSSARY = {
     "Fairness": {
         "definition": "The principle that AI systems should treat all individuals and groups equitably without discrimination.",
         "category": "Ethics",
-        "related": ["Bias", "EU AI Act", "Protected Characteristics"],
+        "related": ["Bias", "EU AI Act"],
         "example": "A loan model should not reject applications based on postcode as a proxy for race."
     },
     "Feature": {
@@ -196,14 +196,14 @@ GLOSSARY = {
     "Fine-tuning": {
         "definition": "The process of taking a pre-trained model and further training it on a smaller, task-specific dataset to adapt it to a new task.",
         "category": "Deep Learning",
-        "related": ["Transfer Learning", "Neural Network", "Embeddings"],
-        "example": "Taking GPT-4 which was trained on general text and fine-tuning it on medical records to create a medical AI assistant."
+        "related": ["Transfer Learning", "Neural Network"],
+        "example": "Taking GPT-4 trained on general text and fine-tuning it on medical records to create a medical AI assistant."
     },
     # ── G ──
     "Gradient Boosting": {
-        "definition": "A boosting technique that builds models sequentially, where each new model corrects the residual errors of the previous one using gradient descent.",
+        "definition": "A boosting technique that builds models sequentially, where each new model corrects the residual errors of the previous one.",
         "category": "ML Techniques",
-        "related": ["Boosting", "XGBoost", "Loss Function", "Gradient Descent"],
+        "related": ["Boosting", "XGBoost", "Loss Function"],
         "example": "Used widely in industry for tabular data — XGBoost and LightGBM are popular gradient boosting implementations."
     },
     "Gradient Descent": {
@@ -216,7 +216,7 @@ GLOSSARY = {
     "Heatmap": {
         "definition": "A colour-coded matrix showing values — commonly used to visualise correlation matrices.",
         "category": "Visualisation",
-        "related": ["Correlation", "Matrix"],
+        "related": ["Correlation"],
         "example": "Dark green cells in a correlation heatmap indicate strong positive correlations between variables."
     },
     "Histogram": {
@@ -241,7 +241,7 @@ GLOSSARY = {
     "IQR": {
         "definition": "Interquartile Range — the difference between Q3 and Q1. Used to detect outliers.",
         "category": "Statistics",
-        "related": ["Quartile", "Outlier", "Box Plot"],
+        "related": ["Outlier", "Box Plot"],
         "example": "Values outside Q1 - 1.5×IQR or Q3 + 1.5×IQR are flagged as potential outliers."
     },
     "Imputation": {
@@ -266,8 +266,8 @@ GLOSSARY = {
     "Kaggle": {
         "definition": "The world's largest platform for data science datasets and competitions, used by over 15 million data scientists.",
         "category": "Tools",
-        "related": ["Dataset"],
-        "example": "DataForge connects to Kaggle so students can import real world datasets without leaving the app."
+        "related": [],
+        "example": "DataForge connects to Kaggle so students can find real world datasets without leaving the app."
     },
     # ── L ──
     "Label": {
@@ -279,11 +279,11 @@ GLOSSARY = {
     "LangChain": {
         "definition": "A framework for building applications powered by large language models.",
         "category": "Tools",
-        "related": ["GPT-4", "Multi-Agent", "Orchestrator"],
+        "related": ["GPT-4"],
         "example": "DataForge uses LangChain to coordinate its pipeline agents and route user requests intelligently."
     },
     "Learning Rate": {
-        "definition": "A hyperparameter that controls how much the model's weights are adjusted with each training step. Too high causes instability, too low causes slow learning.",
+        "definition": "A hyperparameter that controls how much the model's weights are adjusted with each training step.",
         "category": "Deep Learning",
         "related": ["Gradient Descent", "Hyperparameter", "Neural Network"],
         "example": "A learning rate of 0.001 means weights are updated by 0.1% of the gradient each step — small but stable."
@@ -316,7 +316,7 @@ GLOSSARY = {
     "Mean": {
         "definition": "The arithmetic average — sum of all values divided by the count. Sensitive to outliers.",
         "category": "Statistics",
-        "related": ["Median", "Mode", "Standard Deviation"],
+        "related": ["Median", "Standard Deviation"],
         "example": "Mean income of [20k, 30k, 100k] = 50k — distorted by the high earner."
     },
     "Median": {
@@ -357,7 +357,7 @@ GLOSSARY = {
         "example": "Heights of adults approximately follow a normal distribution — most near the average, few very tall or short."
     },
     "Normalisation": {
-        "definition": "Scaling numerical features to a standard range (usually 0 to 1) so no single feature dominates due to its magnitude.",
+        "definition": "Scaling numerical features to a standard range (usually 0 to 1) so no single feature dominates.",
         "category": "Data Science",
         "related": ["Standardisation", "Feature Engineering", "Batch Normalisation"],
         "example": "Age (0-100) and income (0-100,000) are on very different scales — normalisation brings them to the same range."
@@ -379,25 +379,25 @@ GLOSSARY = {
         "definition": "When a model learns the training data too well including noise and fails to generalise to new data.",
         "category": "Core Concepts",
         "related": ["Underfitting", "Regularisation", "Cross-Validation"],
-        "example": "A student who memorises exam answers but cannot apply knowledge to new questions — performs perfectly in training, fails in testing."
+        "example": "A student who memorises exam answers but cannot apply knowledge to new questions."
     },
     # ── P ──
     "P-value": {
         "definition": "The probability of observing results as extreme as the data, assuming the null hypothesis is true. p < 0.05 is typically significant.",
         "category": "Statistics",
-        "related": ["Hypothesis Testing", "Null Hypothesis", "Confidence Interval"],
+        "related": ["Hypothesis Testing"],
         "example": "p = 0.03 means there is a 3% chance the result occurred by random chance — statistically significant."
     },
     "Pandas": {
         "definition": "A Python library for data manipulation and analysis — provides DataFrame structures for tabular data.",
         "category": "Tools",
-        "related": ["NumPy", "DataFrame", "Python"],
+        "related": ["Scikit-learn"],
         "example": "df.dropna() removes rows with missing values. df.describe() gives summary statistics instantly."
     },
     "Plotly": {
         "definition": "A Python library for creating interactive charts.",
         "category": "Tools",
-        "related": ["Matplotlib", "Seaborn", "Visualisation"],
+        "related": ["Visualisation"],
         "example": "DataForge uses Plotly so students can hover over data points for details and zoom into charts."
     },
     "Precision": {
@@ -407,10 +407,10 @@ GLOSSARY = {
         "example": "A cancer test with 99% precision means 99% of positive results are true cases — very few false alarms."
     },
     "Precision-Recall Curve": {
-        "definition": "A graph showing the trade-off between precision and recall at different classification thresholds. Useful for imbalanced datasets.",
+        "definition": "A graph showing the trade-off between precision and recall at different classification thresholds.",
         "category": "Evaluation",
         "related": ["Precision", "Recall", "ROC-AUC", "F1 Score"],
-        "example": "A fraud detector's precision-recall curve shows that increasing recall to catch more fraud comes at the cost of more false alarms."
+        "example": "A fraud detector's precision-recall curve shows that catching more fraud comes at the cost of more false alarms."
     },
     "Principal Component Analysis (PCA)": {
         "definition": "A dimensionality reduction technique that transforms features into uncorrelated components capturing maximum variance.",
@@ -421,7 +421,7 @@ GLOSSARY = {
     "Proxy Variable": {
         "definition": "A variable correlated with a protected attribute that can introduce bias into a model even when the protected attribute is excluded.",
         "category": "Ethics",
-        "related": ["Bias", "Fairness", "Feature"],
+        "related": ["Bias", "Fairness"],
         "example": "Postcode can be a proxy for race — excluding race but including postcode may still produce a biased model."
     },
     # ── R ──
@@ -438,7 +438,7 @@ GLOSSARY = {
         "example": "A fraud detector with high recall catches most fraud cases — missing fraud is more costly than a false alarm."
     },
     "Regularisation": {
-        "definition": "Techniques that add a penalty to the loss function to discourage overly complex models and prevent overfitting. Common types include L1 (Lasso) and L2 (Ridge).",
+        "definition": "Techniques that add a penalty to the loss function to discourage overly complex models and prevent overfitting.",
         "category": "ML Techniques",
         "related": ["Overfitting", "Loss Function", "Dropout"],
         "example": "L2 regularisation adds the sum of squared weights to the loss — pushing the model to keep weights small and simple."
@@ -459,13 +459,13 @@ GLOSSARY = {
     "Scikit-learn": {
         "definition": "The most widely used Python machine learning library — provides tools for classification, regression, clustering and preprocessing.",
         "category": "Tools",
-        "related": ["Python", "Machine Learning", "Pandas"],
+        "related": ["Pandas", "Model"],
         "example": "DataForge AutoML agent uses scikit-learn to train and compare multiple algorithms on your dataset."
     },
     "SHAP Values": {
-        "definition": "SHapley Additive exPlanations — a method to explain individual model predictions by calculating each feature's contribution to the output.",
+        "definition": "SHapley Additive exPlanations — a method to explain individual model predictions by calculating each feature's contribution.",
         "category": "ML Techniques",
-        "related": ["Feature Importance", "Explainability", "Bias"],
+        "related": ["Feature Importance"],
         "example": "SHAP shows that for a loan rejection, 'low income' contributed -0.4 and 'high debt' contributed -0.3 to the decision."
     },
     "Skewness": {
@@ -475,7 +475,7 @@ GLOSSARY = {
         "example": "Income data is positively skewed — most earn average wages but a few earn millions, pulling the tail right."
     },
     "Softmax": {
-        "definition": "An activation function that converts raw model outputs into probabilities that sum to 1, used in the final layer of multi-class classification models.",
+        "definition": "An activation function that converts raw model outputs into probabilities that sum to 1, used in multi-class classification.",
         "category": "Deep Learning",
         "related": ["Neural Network", "Classification", "Logistic Regression"],
         "example": "A model classifying images into cat, dog, or bird might output softmax probabilities of 0.7, 0.2, 0.1 — cat is most likely."
@@ -495,7 +495,7 @@ GLOSSARY = {
     "Streamlit": {
         "definition": "A Python framework for building and deploying interactive web applications for data science.",
         "category": "Tools",
-        "related": ["Python", "Plotly", "Deployment"],
+        "related": ["Plotly"],
         "example": "DataForge is built entirely with Streamlit — turning Python scripts into an interactive web app."
     },
     "Supervised Learning": {
@@ -530,7 +530,7 @@ GLOSSARY = {
         "example": "A model trained on millions of images is fine-tuned to recognise specific medical scans."
     },
     "Transformer": {
-        "definition": "A deep learning architecture based entirely on attention mechanisms, without recurrence. The foundation of modern large language models like GPT-4 and BERT.",
+        "definition": "A deep learning architecture based entirely on attention mechanisms. The foundation of modern large language models like GPT-4 and BERT.",
         "category": "Deep Learning",
         "related": ["Attention Mechanism", "Embeddings", "Fine-tuning"],
         "example": "GPT-4, BERT, and the models powering DataForge are all transformer-based architectures."
@@ -573,9 +573,8 @@ GLOSSARY = {
 
 def get_term_of_the_day():
     terms = list(GLOSSARY.keys())
-    idx   = hash(str(date.today())) % len(terms)
-    term  = terms[idx]
-    return term, GLOSSARY[term]
+    idx = hash(str(date.today())) % len(terms)
+    return terms[idx], GLOSSARY[terms[idx]]
 
 
 def get_categories():
@@ -605,8 +604,7 @@ def set_term_status(username, term, status):
 
 
 def get_term_statuses(username):
-    progress = _load_glossary_progress()
-    return progress.get(username, {})
+    return _load_glossary_progress().get(username, {})
 
 
 def ai_define_term(client, term):
@@ -617,7 +615,7 @@ def ai_define_term(client, term):
             model="gpt-4",
             messages=[{
                 "role": "system",
-                "content": "You are a data science educator. Define the term in 2-3 sentences with one real world example. Format: Definition: ... | Example: ... | Related: term1, term2"
+                "content": "You are a data science educator. Define the term in 2-3 sentences with one example. Format: Definition: ... | Example: ... | Related: term1, term2"
             }, {
                 "role": "user",
                 "content": f"Define: {term}"
@@ -642,20 +640,28 @@ def render_glossary_tab(username="", gpt_client=None):
         f'<div style="color:white;font-size:1.4rem;font-weight:900;margin:.3rem 0">{term_name}</div>'
         f'<div style="color:rgba(255,255,255,.9);font-size:.95rem">{term_data["definition"]}</div>'
         f'<div style="color:rgba(255,255,255,.7);font-size:.82rem;margin-top:.5rem">'
-        f'📌 {term_data.get("example","")}</div>'
+        f'📌 {term_data.get("example", "")}</div>'
         f'</div>', unsafe_allow_html=True)
 
     st.divider()
 
-    # ── SEARCH & FILTERS ──
-    col_s, col_c = st.columns([3, 2])
-    with col_s:
-        search = st.text_input("Search terms", placeholder="e.g. correlation, overfitting...",
-                                key="glossary_search", label_visibility="collapsed")
-    with col_c:
-        categories = ["All"] + get_categories()
-        cat_filter = st.selectbox("Filter by category", categories,
-                                   key="glossary_cat", label_visibility="collapsed")
+    # ── SEARCH ──
+    search = st.text_input(
+        "Search terms",
+        placeholder="e.g. correlation, overfitting...",
+        key="glossary_search",
+        label_visibility="collapsed"
+    )
+
+    # ── CATEGORY FILTER — radio buttons (no popup issues) ──
+    categories = ["All"] + get_categories()
+    cat_filter = st.radio(
+        "Filter by category",
+        categories,
+        key="glossary_cat",
+        horizontal=True,
+        label_visibility="collapsed"
+    )
 
     # ── STILL LEARNING FILTER ──
     statuses = get_term_statuses(username) if username else {}
@@ -675,8 +681,8 @@ def render_glossary_tab(username="", gpt_client=None):
 
     # ── STATS BAR ──
     total = len(GLOSSARY)
-    known = sum(1 for s in statuses.values() if s == 'know')
-    learning = sum(1 for s in statuses.values() if s == 'learning')
+    known = sum(1 for s in statuses.values() if s == "know")
+    learning = sum(1 for s in statuses.values() if s == "learning")
     st.markdown(f"**{len(filtered)} of {total} terms** | ✅ {known} known · 📚 {learning} still learning")
 
     if not filtered:
@@ -716,13 +722,11 @@ def render_glossary_tab(username="", gpt_client=None):
                 b1, b2 = st.columns(2)
                 with b1:
                     if st.button("✅ I Know This", key=f"know_{term}"):
-                        set_term_status(username, term,
-                                         "unmarked" if term_status == "know" else "know")
+                        set_term_status(username, term, "unmarked" if term_status == "know" else "know")
                         st.rerun()
                 with b2:
                     if st.button("📚 Still Learning", key=f"learning_{term}"):
-                        set_term_status(username, term,
-                                         "unmarked" if term_status == "learning" else "learning")
+                        set_term_status(username, term, "unmarked" if term_status == "learning" else "learning")
                         st.rerun()
             else:
                 st.caption("🔒 Log in to track your progress on this term.")
@@ -734,9 +738,12 @@ def render_glossary_tab(username="", gpt_client=None):
     st.markdown("Can't find a term? Ask GPT-4 for an instant definition.")
     col_ai1, col_ai2 = st.columns([4, 1])
     with col_ai1:
-        custom_term = st.text_input("Enter any data science term:",
-                                     placeholder="e.g. SHAP values, t-SNE, SMOTE...",
-                                     key="ai_lookup_term", label_visibility="collapsed")
+        custom_term = st.text_input(
+            "Enter any data science term:",
+            placeholder="e.g. SHAP values, t-SNE, SMOTE...",
+            key="ai_lookup_term",
+            label_visibility="collapsed"
+        )
     with col_ai2:
         lookup_btn = st.button("Define", key="ai_define_btn", use_container_width=True)
 
