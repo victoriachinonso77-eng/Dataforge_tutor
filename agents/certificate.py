@@ -1,3 +1,4 @@
+from typing import Optional
 # agents/certificate.py
 # Progress Certificate Generator — PDF certificate on pipeline completion
 
@@ -5,7 +6,7 @@ from datetime import datetime
 
 
 def generate_certificate(student_name: str, score: int, total: int,
-                          level: str, dataset_name: str = "your dataset") -> bytes | None:
+                          level: str, dataset_name: str = "your dataset") -> Optional[bytes]:
     """Generates a PDF certificate. Returns bytes or None if fpdf2 missing."""
     try:
         from fpdf import FPDF

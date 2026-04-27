@@ -1,3 +1,4 @@
+from typing import Optional
 # agents/voice.py
 # Voice Narration Agent — reads lessons, quiz explanations and feedback aloud
 # Uses OpenAI Text-to-Speech API (tts-1 model)
@@ -26,7 +27,7 @@ def clean_for_speech(text: str) -> str:
 
 
 def text_to_speech(text: str, client, voice: str = "nova",
-                   speed: float = 1.0) -> bytes | None:
+                   speed: float = 1.0) -> Optional[bytes]:
     """
     Converts text to speech using OpenAI TTS API.
     voice options: alloy, echo, fable, onyx, nova, shimmer

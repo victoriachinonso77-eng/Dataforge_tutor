@@ -1,0 +1,14 @@
+{
+  "abdul": {
+    "display_name": "Abdulmalik",
+    "password_hash": "a42d03e54c7799e38dcd3ab2434e6250bca75744d872fe90ea0295f38f553e4a",
+    "salt": "52f861579483d529fd2233442dc0849c",
+    "created_at": "2026-04-25T12:12:23.118329"
+  },
+  "dr. victoria": {
+    "password_hash": "e2ad012013409b56ef6ad5806786f376a4ebb4fa5168ad99669e25cff7cf8567",
+    "salt": "73cf399fcbf9d52752d16b91ea8f2407",
+    "joined": "2026-04-25 14:04",
+    "level": "beginner"
+  }
+}
