@@ -530,6 +530,22 @@ with st.sidebar:
 def _render_chat_mode(level, use_gpt, gpt_client, use_live):
     """Renders the full conversational chatbot interface."""
 
+# ── Ethics banner — shown once per session ────────────────────────
+    if "ethics_banner_dismissed" not in st.session_state:
+        col_e1, col_e2 = st.columns([8, 1])
+        with col_e1:
+            st.info(
+                "⚖️ **New here?** DataForge uses autonomous AI agents to process your data. "
+                "Read our **Ethics & Transparency** section to understand how your data is handled, "
+                "what decisions the AI makes, and what safeguards are in place. "
+                "Scroll to the bottom of this page to read it."
+            )
+        with col_e2:
+            if st.button("✕ Dismiss", key="dismiss_ethics"):
+                st.session_state["ethics_banner_dismissed"] = True
+                st.rerun()
+
+
     # ── Upload section ─────────────────────────────────────────────────
     # ── Upload header ─────────────────────────────────────────────────
     st.markdown(
@@ -953,11 +969,22 @@ st.divider()
 level    = st.session_state["level"]
 app_mode = st.session_state.get("app_mode", "chat")
 
+
+
+    # _render_chat_mode(level, use_gpt, gpt_client, use_live)
+
 # ══════════════════════════════════════════════════════════════════════════
 # ROUTE: CHAT MODE (default) or PIPELINE MODE
 # ══════════════════════════════════════════════════════════════════════════
 if app_mode == "chat":
     _render_chat_mode(level, use_gpt, gpt_client, use_live)
+
+    # Ethics section visible on home page
+    st.divider()
+    with st.expander("⚖️ Ethics & Transparency — How DataForge Works", expanded=False):
+        from ethics_tab import render_ethics_tab
+        render_ethics_tab()
+
     st.stop()
 
 # ── Below here = Pipeline Mode only ──────────────────────────────────────
@@ -2005,6 +2032,9 @@ with t13:
     st.markdown("### 📂 Dataset History")
     st.markdown("All datasets you have analysed with DataForge.")
     render_dataset_history(st.session_state.get("username", ""))
+
+with t14:
+    render_ethics_tab()
 
 # ── Final score ────────────────────────────────────────────────────────────
 st.divider()
