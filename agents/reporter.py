@@ -1,197 +1,111 @@
-{
-  "nbformat": 4,
-  "nbformat_minor": 0,
-  "metadata": {
-    "colab": {
-      "provenance": []
-    },
-    "kernelspec": {
-      "name": "python3",
-      "display_name": "Python 3"
-    },
-    "language_info": {
-      "name": "python"
-    }
-  },
-  "cells": [
-    {
-      "cell_type": "code",
-      "execution_count": null,
-      "metadata": {
-        "id": "KMNsfRGZ8QfU"
-      },
-      "outputs": [],
-      "source": [
-        "# agents/reporter.py\n",
-        "# Agent 4 — GPT-4 Natural Language Report Writer\n",
-        "\n",
-        "import json\n",
-        "from openai import OpenAI\n",
-        "from dotenv import load_dotenv\n",
-        "\n",
-        "load_dotenv()\n",
-        "\n",
-        "\n",
-        "def generate_report(insights: dict, audit_log: list[str], client: OpenAI) -> str:\n",
-        "    \"\"\"\n",
-        "    Uses GPT-4 to write a full natural-language data analysis report.\n",
-        "    Returns the report as a markdown string.\n",
-        "    \"\"\"\n",
-        "\n",
-        "    # Prepare a clean summary to send to the LLM\n",
-        "    summary = {\n",
-        "        \"dataset_shape\": insights.get(\"shape\", {}),\n",
-        "        \"columns\": insights.get(\"columns\", []),\n",
-        "        \"numeric_summary\": {\n",
-        "            k: {stat: val for stat, val in v.items()}\n",
-        "            for k, v in insights.get(\"numeric_summary\", {}).items()\n",
-        "        },\n",
-        "        \"strong_correlations\": insights.get(\"strong_correlations\", []),\n",
-        "        \"categorical_summary\": {\n",
-        "            col: data.get(\"top_5\", {})\n",
-        "            for col, data in insights.get(\"categorical_summary\", {}).items()\n",
-        "        },\n",
-        "        \"skewed_columns\": insights.get(\"skewed_columns\", {}),\n",
-        "        \"bias_warnings\": insights.get(\"bias_warnings\", []),\n",
-        "        \"cleaning_log\": audit_log[-5:],  # last 5 entries\n",
-        "    }\n",
-        "\n",
-        "    prompt = f\"\"\"\n",
-        "You are DataForge, an expert autonomous data analyst AI.\n",
-        "You have just processed a dataset and gathered the following insights:\n",
-        "\n",
-        "{json.dumps(summary, indent=2)}\n",
-        "\n",
-        "Write a professional, structured data analysis report in Markdown.\n",
-        "The report must include the following sections:\n",
-        "\n",
-        "1. **Executive Summary** — 2-3 sentence overview of the dataset and key findings.\n",
-        "2. **Dataset Overview** — Describe the size, structure and column types.\n",
-        "3. **Key Statistical Findings** — Highlight the most important numeric insights, distributions, and trends.\n",
-        "4. **Correlations & Relationships** — Describe any strong correlations found between variables.\n",
-        "5. **Data Quality Notes** — Summarise what was cleaned and any remaining concerns.\n",
-        "6. **Bias & Fairness Warnings** — Call out any skewness or potential bias issues discovered.\n",
-        "7. **Recommendations** — 3-5 actionable recommendations for analysts or stakeholders.\n",
-        "\n",
-        "Write clearly and professionally. Use bullet points where appropriate.\n",
-        "Do NOT make up data that isn't in the provided insights.\n",
-        "\"\"\"\n",
-        "\n",
-        "    response = client.chat.completions.create(\n",
-        "        model=\"gpt-4\",\n",
-        "        messages=[\n",
-        "            {\"role\": \"system\", \"content\": \"You are DataForge, a professional AI data analyst. Write clear, accurate, insightful reports.\"},\n",
-        "            {\"role\": \"user\", \"content\": prompt}\n",
-        "        ],\n",
-        "        temperature=0.4,\n",
-        "        max_tokens=1500\n",
-        "    )\n",
-        "\n",
-        "    return response.choices[0].message.content\n",
-        "\n",
-        "\n",
-        "def generate_report_fallback(insights: dict, audit_log: list[str]) -> str:\n",
-        "    \"\"\"\n",
-        "    Fallback report generator that works WITHOUT an OpenAI API key.\n",
-        "    Uses pure Python to construct a structured report.\n",
-        "    \"\"\"\n",
-        "    shape = insights.get(\"shape\", {})\n",
-        "    cols = insights.get(\"columns\", [])\n",
-        "    numeric = insights.get(\"numeric_summary\", {})\n",
-        "    correlations = insights.get(\"strong_correlations\", [])\n",
-        "    categorical = insights.get(\"categorical_summary\", {})\n",
-        "    skewed = insights.get(\"skewed_columns\", {})\n",
-        "    bias_warnings = insights.get(\"bias_warnings\", [])\n",
-        "\n",
-        "    lines = []\n",
-        "\n",
-        "    lines.append(\"# 📊 DataForge Analysis Report\\n\")\n",
-        "    lines.append(\"*Generated autonomously by DataForge AI Agent*\\n\")\n",
-        "    lines.append(\"---\\n\")\n",
-        "\n",
-        "    # Executive Summary\n",
-        "    lines.append(\"## 1. Executive Summary\\n\")\n",
-        "    lines.append(f\"The dataset contains **{shape.get('rows', '?')} rows** and \"\n",
-        "                 f\"**{shape.get('cols', '?')} columns**. \"\n",
-        "                 f\"DataForge has autonomously cleaned, analysed and visualised this data. \"\n",
-        "                 f\"A total of **{len(cols)} features** were examined, \"\n",
-        "                 f\"with **{len(numeric)} numeric** and **{len(categorical)} categorical** columns identified.\\n\")\n",
-        "\n",
-        "    # Dataset Overview\n",
-        "    lines.append(\"## 2. Dataset Overview\\n\")\n",
-        "    lines.append(f\"- **Total rows:** {shape.get('rows', 'N/A')}\")\n",
-        "    lines.append(f\"- **Total columns:** {shape.get('cols', 'N/A')}\")\n",
-        "    lines.append(f\"- **Numeric columns:** {', '.join(numeric.keys()) if numeric else 'None'}\")\n",
-        "    lines.append(f\"- **Categorical columns:** {', '.join(categorical.keys()) if categorical else 'None'}\\n\")\n",
-        "\n",
-        "    # Key Statistical Findings\n",
-        "    lines.append(\"## 3. Key Statistical Findings\\n\")\n",
-        "    if numeric:\n",
-        "        for col, stats in list(numeric.items())[:5]:\n",
-        "            mean = stats.get(\"mean\", {})\n",
-        "            std = stats.get(\"std\", {})\n",
-        "            mn = stats.get(\"min\", {})\n",
-        "            mx = stats.get(\"max\", {})\n",
-        "            lines.append(f\"**{col}**: mean={mean}, std={std}, min={mn}, max={mx}\")\n",
-        "        lines.append(\"\")\n",
-        "    else:\n",
-        "        lines.append(\"No numeric columns found.\\n\")\n",
-        "\n",
-        "    # Skewness\n",
-        "    if skewed:\n",
-        "        lines.append(\"### Skewness Detected\\n\")\n",
-        "        for col, val in skewed.items():\n",
-        "            direction = \"right (positively)\" if val > 0 else \"left (negatively)\"\n",
-        "            lines.append(f\"- `{col}` is skewed {direction} (skewness = {val})\")\n",
-        "        lines.append(\"\")\n",
-        "\n",
-        "    # Correlations\n",
-        "    lines.append(\"## 4. Correlations & Relationships\\n\")\n",
-        "    if correlations:\n",
-        "        for pair in correlations:\n",
-        "            strength = \"strong positive\" if pair[\"correlation\"] > 0 else \"strong negative\"\n",
-        "            lines.append(f\"- **{pair['col_a']}** and **{pair['col_b']}**: {strength} correlation (r = {pair['correlation']})\")\n",
-        "        lines.append(\"\")\n",
-        "    else:\n",
-        "        lines.append(\"No strong correlations (r > 0.5) were detected between numeric columns.\\n\")\n",
-        "\n",
-        "    # Data Quality\n",
-        "    lines.append(\"## 5. Data Quality Notes\\n\")\n",
-        "    for entry in audit_log:\n",
-        "        lines.append(f\"- {entry}\")\n",
-        "    lines.append(\"\")\n",
-        "\n",
-        "    # Bias Warnings\n",
-        "    lines.append(\"## 6. Bias & Fairness Warnings\\n\")\n",
-        "    if bias_warnings:\n",
-        "        for w in bias_warnings:\n",
-        "            lines.append(f\"⚠️ {w}\")\n",
-        "    else:\n",
-        "        lines.append(\"✅ No significant bias concerns detected in this dataset.\")\n",
-        "    lines.append(\"\")\n",
-        "\n",
-        "    # Recommendations\n",
-        "    lines.append(\"## 7. Recommendations\\n\")\n",
-        "    recs = [\n",
-        "        \"Validate all cleaning steps against domain knowledge before using for modelling.\",\n",
-        "        \"Investigate any flagged outliers — they may represent genuine anomalies or data entry errors.\",\n",
-        "    ]\n",
-        "    if correlations:\n",
-        "        recs.append(f\"Explore the relationship between '{correlations[0]['col_a']}' and '{correlations[0]['col_b']}' further — strong correlation may indicate a causal or confounding relationship.\")\n",
-        "    if skewed:\n",
-        "        recs.append(f\"Consider applying log transformation to skewed columns ({', '.join(skewed.keys())}) before using in predictive models.\")\n",
-        "    recs.append(\"Run this pipeline on updated data regularly to track changes over time.\")\n",
-        "\n",
-        "    for i, rec in enumerate(recs, 1):\n",
-        "        lines.append(f\"{i}. {rec}\")\n",
-        "    lines.append(\"\")\n",
-        "\n",
-        "    lines.append(\"---\")\n",
-        "    lines.append(\"*Report generated by DataForge — Autonomous Data Pipeline Agent*\")\n",
-        "\n",
-        "    return \"\\n\".join(lines)"
-      ]
-    }
-  ]
-}
+# agents/reporter.py
+# Agent 4 — GPT-4o-mini Natural Language Report Writer
 
+import json
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+def generate_report(insights: dict, audit_log: list, client) -> str:
+    summary = {
+        "dataset_shape": insights.get("shape", {}),
+        "columns": insights.get("columns", []),
+        "numeric_summary": {
+            k: {stat: val for stat, val in v.items()}
+            for k, v in insights.get("numeric_summary", {}).items()
+        },
+        "strong_correlations": insights.get("strong_correlations", []),
+        "categorical_summary": {
+            col: data.get("top_5", {})
+            for col, data in insights.get("categorical_summary", {}).items()
+        },
+        "skewed_columns": insights.get("skewed_columns", {}),
+        "bias_warnings": insights.get("bias_warnings", []),
+        "cleaning_log": audit_log[-5:],
+    }
+
+    prompt = f"""
+You are DataForge, an expert autonomous data analyst AI.
+You have just processed a dataset and gathered the following insights:
+
+{json.dumps(summary, indent=2)}
+
+Write a professional, structured data analysis report in Markdown.
+Include: Executive Summary, Dataset Overview, Key Statistical Findings,
+Correlations, Data Quality Notes, Bias Warnings, and Recommendations.
+Do NOT make up data that is not in the provided insights.
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are DataForge, a professional AI data analyst."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.4,
+        max_tokens=1500
+    )
+    return response.choices[0].message.content
+
+
+def generate_report_fallback(insights: dict, audit_log: list) -> str:
+    shape = insights.get("shape", {})
+    cols = insights.get("columns", [])
+    numeric = insights.get("numeric_summary", {})
+    correlations = insights.get("strong_correlations", [])
+    categorical = insights.get("categorical_summary", {})
+    skewed = insights.get("skewed_columns", {})
+    bias_warnings = insights.get("bias_warnings", [])
+
+    lines = []
+    lines.append("# DataForge Analysis Report\n")
+    lines.append("*Generated autonomously by DataForge AI Agent*\n")
+    lines.append("---\n")
+    lines.append("## 1. Executive Summary\n")
+    lines.append(f"The dataset contains **{shape.get('rows', '?')} rows** and "
+                 f"**{shape.get('cols', '?')} columns**. "
+                 f"A total of **{len(cols)} features** were examined, "
+                 f"with **{len(numeric)} numeric** and **{len(categorical)} categorical** columns.\n")
+    lines.append("## 2. Dataset Overview\n")
+    lines.append(f"- **Total rows:** {shape.get('rows', 'N/A')}")
+    lines.append(f"- **Total columns:** {shape.get('cols', 'N/A')}")
+    lines.append(f"- **Numeric columns:** {', '.join(numeric.keys()) if numeric else 'None'}")
+    lines.append(f"- **Categorical columns:** {', '.join(categorical.keys()) if categorical else 'None'}\n")
+    lines.append("## 3. Key Statistical Findings\n")
+    if numeric:
+        for col, stats in list(numeric.items())[:5]:
+            lines.append(f"**{col}**: mean={stats.get('mean')}, std={stats.get('std')}, min={stats.get('min')}, max={stats.get('max')}")
+        lines.append("")
+    lines.append("## 4. Correlations & Relationships\n")
+    if correlations:
+        for pair in correlations:
+            strength = "positive" if pair["correlation"] > 0 else "negative"
+            lines.append(f"- **{pair['col_a']}** and **{pair['col_b']}**: {strength} (r = {pair['correlation']})")
+    else:
+        lines.append("No strong correlations detected.\n")
+    lines.append("## 5. Data Quality Notes\n")
+    for entry in audit_log:
+        lines.append(f"- {entry}")
+    lines.append("")
+    lines.append("## 6. Bias & Fairness Warnings\n")
+    if bias_warnings:
+        for w in bias_warnings:
+            lines.append(f"- {w}")
+    else:
+        lines.append("No significant bias concerns detected.")
+    lines.append("")
+    lines.append("## 7. Recommendations\n")
+    recs = [
+        "Validate cleaning steps against domain knowledge before modelling.",
+        "Investigate flagged outliers before using data in production.",
+    ]
+    if skewed:
+        recs.append(f"Apply log transformation to skewed columns: {', '.join(skewed.keys())}.")
+    recs.append("Run this pipeline regularly to track data changes over time.")
+    for i, rec in enumerate(recs, 1):
+        lines.append(f"{i}. {rec}")
+    lines.append("\n---")
+    lines.append("*Report generated by DataForge*")
+    return "\n".join(lines)

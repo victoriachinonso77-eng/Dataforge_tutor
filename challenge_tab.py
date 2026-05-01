@@ -1,389 +1,292 @@
-"""
-Streamlit UI — Tab 7: Challenge Me (Socratic Mode)
-Drop this tab into your existing app.py.
-
-Usage in app.py:
-    from challenge_tab import render_challenge_tab
-    with tab7:
-        render_challenge_tab(st.session_state.get("analysis_result"), 
-                             st.session_state.get("df"))
-"""
+# challenge_tab.py
+# Socratic Challenge Mode UI
+# Called from app.py inside the Challenge Me tab
 
 import streamlit as st
-from agents.socratic import (
-    generate_questions,
-    evaluate_answer,
-    compute_session_result,
-    Question,
-    AnswerFeedback,
-    SessionResult,
-)
+from agents.socratic import (generate_questions, grade_answer,
+                              get_badge, get_session_summary,
+                              DIFFICULTY_LABELS, BADGES)
+from auth import save_session
 
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
-
-def _analysis_to_summary(analysis_result, df) -> dict:
+def render_challenge_tab(cleaned_df, insights, audit_log,
+                          gpt_client, level, username):
     """
-    Convert whatever your analyser agent returns into the flat dict
-    the Socratic agent needs. Adapt field names to match your analyser output.
+    Renders the full Socratic Challenge Me tab.
+    Requires a cleaned dataset, insights dict, and audit log from the pipeline.
     """
-    import pandas as pd
-
-    summary = {}
-
-    if df is not None:
-        summary["shape"] = {"rows": int(df.shape[0]), "columns": int(df.shape[1])}
-        summary["columns"] = list(df.columns)
-        summary["dtypes"] = {col: str(dtype) for col, dtype in df.dtypes.items()}
-        summary["missing_values"] = df.isnull().sum()[df.isnull().sum() > 0].to_dict()
-        summary["missing_pct"] = {
-            col: round(df[col].isnull().mean() * 100, 2)
-            for col in df.columns
-            if df[col].isnull().any()
-        }
-
-        numeric_cols = df.select_dtypes(include="number")
-        if not numeric_cols.empty:
-            desc = numeric_cols.describe().round(3)
-            summary["numeric_stats"] = desc.to_dict()
-
-            # Skewness
-            summary["skewness"] = numeric_cols.skew().round(3).to_dict()
-
-            # Top correlations (flatten to top 5 pairs)
-            corr = numeric_cols.corr()
-            pairs = []
-            seen = set()
-            for c1 in corr.columns:
-                for c2 in corr.columns:
-                    if c1 != c2 and (c2, c1) not in seen:
-                        pairs.append((c1, c2, round(float(corr.loc[c1, c2]), 3)))
-                        seen.add((c1, c2))
-            pairs.sort(key=lambda x: abs(x[2]), reverse=True)
-            summary["top_correlations"] = [
-                {"col_a": a, "col_b": b, "r": r} for a, b, r in pairs[:5]
-            ]
-
-        cat_cols = df.select_dtypes(include="object")
-        if not cat_cols.empty:
-            summary["categorical_cardinality"] = {
-                col: int(df[col].nunique()) for col in cat_cols.columns
-            }
-
-    # If your analyser agent returns extra structured data, merge it in
-    if analysis_result and isinstance(analysis_result, dict):
-        for key in ("insights", "anomalies", "recommendations"):
-            if key in analysis_result:
-                summary[key] = analysis_result[key]
-
-    return summary
-
-
-def _score_bar(score: int, max_score: int = 10):
-    """Render a small coloured progress bar for a question score."""
-    pct = score / max_score
-    color = "#22c55e" if pct >= 0.7 else "#f59e0b" if pct >= 0.4 else "#ef4444"
+    st.markdown("### 🧠 Socratic Challenge Mode")
     st.markdown(
-        f"""
-        <div style="background:#e5e7eb;border-radius:8px;height:10px;margin:4px 0 12px 0">
-          <div style="width:{pct*100:.0f}%;background:{color};height:10px;border-radius:8px"></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+        "DataForge will quiz you on your actual dataset findings. "
+        "Answers are graded 0–10 with a strict rubric — you must reference "
+        "specific details from your data to score above 4."
     )
 
-
-# ─── Main render function ─────────────────────────────────────────────────────
-
-def render_challenge_tab(analysis_result=None, df=None):
-    st.header("🧠 Challenge Me — Socratic Mode")
-    st.markdown(
-        "_Stop reading. Start thinking._ "
-        "The AI will quiz you on **your own dataset** and score your data science reasoning."
-    )
-
-    # ── Guard: need a dataset ──────────────────────────────────────────────
-    if df is None:
-        st.info("📂 Upload and analyse a dataset first (Steps 1–2), then come back here.")
-        return
-
-    # ── Session state initialisation ───────────────────────────────────────
-    for key, default in [
-        ("sq_questions", None),
-        ("sq_answers", {}),
-        ("sq_feedbacks", {}),
-        ("sq_current_idx", 0),
-        ("sq_phase", "setup"),      # setup | quiz | results
-        ("sq_difficulty", "intermediate"),
-        ("sq_summary", None),
-        ("sq_analysis_summary", None),
-    ]:
-        if key not in st.session_state:
-            st.session_state[key] = default
-
-    # ─────────────────────────────────────────────────────────────────────
-    # PHASE 1 — SETUP
-    # ─────────────────────────────────────────────────────────────────────
-    if st.session_state.sq_phase == "setup":
-        col1, col2 = st.columns([2, 1])
-
-        with col1:
-            st.subheader("Configure your challenge")
-            difficulty = st.selectbox(
-                "Difficulty level",
-                ["beginner", "intermediate", "advanced"],
-                index=1,
-                help=(
-                    "**Beginner** — observation questions\n"
-                    "**Intermediate** — interpretation & reasoning\n"
-                    "**Advanced** — application & design decisions"
-                ),
-            )
-            n_questions = st.slider("Number of questions", 3, 10, 5)
-
-        with col2:
-            st.subheader("Your dataset")
-            st.metric("Rows", df.shape[0])
-            st.metric("Columns", df.shape[1])
-            st.metric("Missing cells", int(df.isnull().sum().sum()))
-
-        st.divider()
-
-        if st.button("🚀 Start Challenge", type="primary", use_container_width=True):
-            with st.spinner("Generating your personalised questions…"):
-                summary = _analysis_to_summary(analysis_result, df)
-                questions = generate_questions(summary, difficulty, n_questions)
-
-            st.session_state.sq_questions = questions
-            st.session_state.sq_answers = {}
-            st.session_state.sq_feedbacks = {}
-            st.session_state.sq_current_idx = 0
-            st.session_state.sq_phase = "quiz"
-            st.session_state.sq_difficulty = difficulty
-            st.session_state.sq_analysis_summary = summary
+    # ── Difficulty selector ────────────────────────────────────────────
+    st.divider()
+    col_d1, col_d2, col_d3 = st.columns([2, 2, 3])
+    with col_d1:
+        difficulty = st.selectbox(
+            "Difficulty level",
+            options=["beginner", "intermediate", "advanced"],
+            index=["beginner", "intermediate", "advanced"].index(
+                st.session_state.get("challenge_difficulty", level)),
+            key="challenge_difficulty_select",
+            format_func=lambda x: DIFFICULTY_LABELS[x]
+        )
+        st.session_state["challenge_difficulty"] = difficulty
+    with col_d2:
+        n_questions = st.selectbox("Number of questions", [3, 5, 7, 10],
+                                    index=1, key="challenge_n_q")
+    with col_d3:
+        st.markdown("")
+        st.markdown("")
+        if st.button("🚀 Start Challenge", key="start_challenge",
+                     use_container_width=True):
+            st.session_state["challenge_active"]   = True
+            st.session_state["challenge_questions"] = None
+            st.session_state["challenge_answers"]   = {}
+            st.session_state["challenge_scores"]    = {}
+            st.session_state["challenge_followups"] = {}
+            st.session_state["challenge_complete"]  = False
             st.rerun()
 
-    # ─────────────────────────────────────────────────────────────────────
-    # PHASE 2 — QUIZ
-    # ─────────────────────────────────────────────────────────────────────
-    elif st.session_state.sq_phase == "quiz":
-        questions: list[Question] = st.session_state.sq_questions
-        idx: int = st.session_state.sq_current_idx
-        total = len(questions)
-
-        # Progress bar
-        st.progress((idx) / total, text=f"Question {idx + 1} of {total}")
-
-        q = questions[idx]
-
-        # Question card
-        st.markdown(
-            f"""
-            <div style="background:#1e293b;border-left:4px solid #6366f1;
-                        padding:16px 20px;border-radius:8px;margin-bottom:16px">
-              <p style="color:#a5b4fc;font-size:12px;margin:0 0 6px 0">
-                #{q.id} · {q.concept.upper()} · {q.difficulty}
-              </p>
-              <p style="color:#f1f5f9;font-size:18px;font-weight:600;margin:0">
-                {q.text}
-              </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+    # ── Not started yet ────────────────────────────────────────────────
+    if not st.session_state.get("challenge_active"):
+        st.info(
+            "👆 Choose your difficulty level and click **Start Challenge** to begin. "
+            "Questions are generated from your actual dataset findings."
         )
+        _show_badge_guide()
+        return
 
-        # If already answered — show answer + feedback
-        if idx in st.session_state.sq_feedbacks:
-            fb: AnswerFeedback = st.session_state.sq_feedbacks[idx]
-            user_ans = st.session_state.sq_answers[idx]
-
-            st.markdown(f"**Your answer:** {user_ans}")
-            _score_bar(fb.score)
-
-            result_color = "#22c55e" if fb.is_correct else "#ef4444"
-            result_icon = "✅" if fb.is_correct else "❌"
-            st.markdown(
-                f"""
-                <div style="background:#0f172a;border:1px solid {result_color};
-                            padding:14px;border-radius:8px;margin-bottom:12px">
-                  <p style="color:{result_color};font-weight:700;margin:0 0 6px 0">
-                    {result_icon} Score: {fb.score}/10
-                  </p>
-                  <p style="color:#cbd5e1;margin:0">{fb.explanation}</p>
-                </div>
-                """,
-                unsafe_allow_html=True,
+    # ── Generate questions if not yet done ────────────────────────────
+    if st.session_state.get("challenge_questions") is None:
+        with st.spinner("GPT-4 is generating questions from your dataset..."):
+            questions = generate_questions(
+                client     = gpt_client,
+                df         = cleaned_df,
+                insights   = insights,
+                audit_log  = audit_log,
+                difficulty = difficulty,
+                n_questions = n_questions,
             )
+        st.session_state["challenge_questions"] = questions
 
-            if fb.follow_up:
-                st.info(f"💭 **Think further:** {fb.follow_up}")
+    questions = st.session_state["challenge_questions"]
+    answers   = st.session_state.get("challenge_answers", {})
+    scores    = st.session_state.get("challenge_scores", {})
+    followups = st.session_state.get("challenge_followups", {})
+    complete  = st.session_state.get("challenge_complete", False)
 
-            col_prev, col_next = st.columns(2)
-            with col_prev:
-                if idx > 0 and st.button("← Previous"):
-                    st.session_state.sq_current_idx -= 1
-                    st.rerun()
-            with col_next:
-                if idx < total - 1:
-                    if st.button("Next →", type="primary"):
-                        st.session_state.sq_current_idx += 1
-                        st.rerun()
+    # ── Render each question ───────────────────────────────────────────
+    if not complete:
+        st.markdown(f"**{len(questions)} questions — {DIFFICULTY_LABELS[difficulty]} level**")
+        st.markdown(
+            "> 💡 Reference specific numbers, column names, and findings "
+            "from your dataset to score 5 or above."
+        )
+        st.divider()
+
+        for qi, q in enumerate(questions):
+            already_answered = str(qi) in scores
+
+            with st.expander(
+                f"Q{qi+1}: {q['question'][:80]}{'...' if len(q['question'])>80 else ''}",
+                expanded=not already_answered
+            ):
+                st.markdown(f"**{q['question']}**")
+                st.caption(f"Concept: {q['concept']} · Difficulty: {DIFFICULTY_LABELS[q.get('difficulty', difficulty)]}")
+
+                if already_answered:
+                    # Show graded result
+                    score_data = scores[str(qi)]
+                    _render_score(score_data)
+                    if str(qi) in followups:
+                        st.markdown(
+                            f'<div style="background:#0D2137;border-left:3px solid #028090;'
+                            f'padding:.7rem 1rem;border-radius:0 6px 6px 0;margin-top:.5rem">'
+                            f'💭 <strong>Follow-up:</strong> {followups[str(qi)]}'
+                            f'</div>', unsafe_allow_html=True)
                 else:
-                    if st.button("🏁 See Results", type="primary"):
-                        with st.spinner("Calculating your Data Science Readiness Score…"):
-                            result = compute_session_result(
-                                list(st.session_state.sq_feedbacks.values()),
-                                st.session_state.sq_analysis_summary,
-                                st.session_state.sq_difficulty,
-                            )
-
-                        # Save progress to JSON
-                        from auth import save_session_result
-                        username = st.session_state.get("current_user", {}).get("username")
-                        if username:
-                            save_session_result(username, {
-                                "total_score": result.total_score,
-                                "max_score": result.max_score,
-                                "percentage": result.percentage,
-                                "badge": result.badge,
-                                "difficulty": st.session_state.sq_difficulty,
-                                "mastered_concepts": result.mastered_concepts,
-                                "weak_concepts": result.weak_concepts,
-                                "summary": result.summary,
-                            })
-
-                        st.session_state.sq_summary = result
-                        st.session_state.sq_phase = "results"
-                        st.rerun()
-
-        # Not yet answered — show input
-        else:
-            with st.expander("💡 Need a hint?"):
-                st.markdown(q.hint)
-
-            user_answer = st.text_area(
-                "Your answer",
-                placeholder="Type your reasoning here… be as detailed as you like.",
-                height=130,
-                key=f"answer_input_{idx}",
-            )
-
-            if st.button("Submit Answer", type="primary", use_container_width=True):
-                if not user_answer.strip():
-                    st.warning("Please write an answer before submitting.")
-                else:
-                    running_score = sum(
-                        f.score for f in st.session_state.sq_feedbacks.values()
+                    # Answer input
+                    answer_key = f"challenge_ans_{qi}"
+                    user_answer = st.text_area(
+                        "Your answer",
+                        placeholder="Write your answer here — reference specific "
+                                    "columns, numbers, or findings from your dataset...",
+                        key=answer_key,
+                        height=120,
+                        label_visibility="collapsed"
                     )
-                    with st.spinner("Evaluating your answer…"):
-                        fb = evaluate_answer(
-                            q,
-                            user_answer,
-                            st.session_state.sq_analysis_summary,
-                            running_score,
-                        )
-                    st.session_state.sq_answers[idx] = user_answer
-                    st.session_state.sq_feedbacks[idx] = fb
-                    st.rerun()
+                    if st.button(f"Submit Answer", key=f"submit_q_{qi}"):
+                        if not user_answer or not user_answer.strip():
+                            st.warning("Please write an answer before submitting.")
+                        else:
+                            with st.spinner("GPT-4 is grading your answer..."):
+                                grade = grade_answer(
+                                    client         = gpt_client,
+                                    question       = q["question"],
+                                    student_answer = user_answer,
+                                    ideal_points   = q.get("ideal_answer_points", []),
+                                    concept        = q.get("concept", "data science"),
+                                    difficulty     = difficulty,
+                                )
+                            st.session_state["challenge_answers"][str(qi)] = user_answer
+                            st.session_state["challenge_scores"][str(qi)]  = grade
+                            st.session_state["challenge_followups"][str(qi)] = grade.get("follow_up", "")
+                            st.rerun()
 
-    # ─────────────────────────────────────────────────────────────────────
-    # PHASE 3 — RESULTS
-    # ─────────────────────────────────────────────────────────────────────
-    elif st.session_state.sq_phase == "results":
-        result: SessionResult = st.session_state.sq_summary
+        # ── Submit all button ──────────────────────────────────────────
+        answered_count = len(scores)
+        st.divider()
+        progress_pct = answered_count / len(questions)
+        st.progress(progress_pct,
+                    text=f"{answered_count}/{len(questions)} questions answered")
 
-        st.balloons()
-        st.subheader(f"Your Result: {result.badge}")
+        if answered_count == len(questions):
+            if st.button("🏁 See My Results", key="finish_challenge",
+                         use_container_width=True):
+                st.session_state["challenge_complete"] = True
+                st.rerun()
+        elif answered_count > 0:
+            st.info(f"Answer all {len(questions)} questions to see your results and badge.")
 
-        # Score ring (CSS hack)
-        pct = result.percentage
-        ring_color = "#22c55e" if pct >= 70 else "#f59e0b" if pct >= 50 else "#ef4444"
+    # ── Results screen ─────────────────────────────────────────────────
+    else:
+        _render_results(questions, scores, followups, difficulty,
+                        gpt_client, username, cleaned_df)
+
+
+def _render_score(score_data: dict):
+    """Renders a coloured score pill and feedback."""
+    score     = score_data.get("score", 0)
+    max_score = score_data.get("max_score", 10)
+    label     = score_data.get("grade_label", "Graded")
+    feedback  = score_data.get("feedback", "")
+
+    colour = ("#166534" if score >= 8 else
+              "#1D4ED8" if score >= 5 else
+              "#92400E" if score >= 3 else "#7F1D1D")
+    text_colour = "#86EFAC" if score >= 8 else "#BFDBFE" if score >= 5 else "#FCD34D" if score >= 3 else "#FCA5A5"
+
+    st.markdown(
+        f'<div style="background:{colour};border-radius:8px;padding:.5rem 1rem;'
+        f'display:inline-block;margin-bottom:.5rem">'
+        f'<span style="color:{text_colour};font-weight:bold">'
+        f'{score}/{max_score} — {label}</span></div>',
+        unsafe_allow_html=True
+    )
+    if feedback:
         st.markdown(
-            f"""
-            <div style="display:flex;justify-content:center;margin:20px 0">
-              <div style="position:relative;width:140px;height:140px">
-                <svg viewBox="0 0 36 36" style="width:140px;height:140px;transform:rotate(-90deg)">
-                  <circle cx="18" cy="18" r="15.9" fill="none"
-                          stroke="#1e293b" stroke-width="3.8"/>
-                  <circle cx="18" cy="18" r="15.9" fill="none"
-                          stroke="{ring_color}" stroke-width="3.8"
-                          stroke-dasharray="{pct:.0f} {100-pct:.0f}"
-                          stroke-linecap="round"/>
-                </svg>
-                <div style="position:absolute;top:50%;left:50%;
-                            transform:translate(-50%,-50%);text-align:center">
-                  <span style="font-size:28px;font-weight:800;color:{ring_color}">{pct:.0f}%</span>
-                </div>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+            f'<div style="background:#1C2333;border-radius:6px;padding:.7rem 1rem;'
+            f'color:#C9D1D9;font-size:.9rem">{feedback}</div>',
+            unsafe_allow_html=True
         )
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total Score", f"{result.total_score}/{result.max_score}")
-        col2.metric("Mastered Concepts", len(result.mastered_concepts))
-        col3.metric("Needs Work", len(result.weak_concepts))
 
-        st.divider()
-        st.markdown("### 📝 Tutor's Feedback")
-        st.markdown(result.summary)
+def _render_results(questions, scores, followups, difficulty,
+                    gpt_client, username, cleaned_df):
+    """Renders the final results screen with badge and session save."""
+    score_list = [scores[str(i)] for i in range(len(questions))
+                  if str(i) in scores]
+    total     = sum(s["score"] for s in score_list)
+    max_total = len(questions) * 10
+    badge     = get_badge(total, max_total)
 
-        if result.mastered_concepts:
-            st.success(f"✅ Strong on: {', '.join(result.mastered_concepts)}")
-        if result.weak_concepts:
-            st.warning(f"📚 Review needed: {', '.join(result.weak_concepts)}")
+    # Badge display
+    st.markdown(f"""
+    <div style="background:linear-gradient(135deg,#0D2137,#1E3A5F);
+                border:2px solid {badge.get('color','#028090')};
+                border-radius:14px;padding:2rem;text-align:center;margin:1rem 0">
+        <div style="font-size:3.5rem">{badge.get('emoji','🏆')}</div>
+        <div style="font-size:1.8rem;font-weight:900;color:{badge.get('color','#028090')}">
+            {badge.get('name','Completed')}
+        </div>
+        <div style="color:#E6EDF3;font-size:1.1rem;margin:.5rem 0">
+            {total}/{max_total} points ({badge.get('pct',0):.0f}%)
+        </div>
+        <div style="color:#8B949E;font-size:.9rem">
+            {DIFFICULTY_LABELS.get(difficulty, difficulty)} level · 
+            {len(questions)} questions
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-        st.divider()
-        st.markdown("### Question-by-Question Breakdown")
-        for i, (q, fb) in enumerate(
-            zip(
-                st.session_state.sq_questions,
-                st.session_state.sq_feedbacks.values(),
-            )
-        ):
-            with st.expander(f"Q{i+1}: {q.concept.title()} — {fb.score}/10"):
-                st.markdown(f"**Question:** {q.text}")
-                st.markdown(f"**Your answer:** {st.session_state.sq_answers[i]}")
-                _score_bar(fb.score)
-                st.markdown(f"**Feedback:** {fb.explanation}")
+    # Score breakdown
+    st.markdown("### 📋 Question-by-Question Breakdown")
+    for qi, q in enumerate(questions):
+        if str(qi) in scores:
+            score_data = scores[str(qi)]
+            s          = score_data.get("score", 0)
+            icon       = "🟢" if s >= 8 else "🔵" if s >= 5 else "🟡" if s >= 3 else "🔴"
+            with st.expander(f"{icon} Q{qi+1}: {q['question'][:60]}... — {s}/10"):
+                st.markdown(f"**Concept:** {q.get('concept','')}")
+                _render_score(score_data)
 
-        st.divider()
-        col_retry, col_harder, col_reset = st.columns(3)
+    # Save session to progress tracker
+    session_data = {
+        "score":        total,
+        "max_score":    max_total,
+        "difficulty":   difficulty,
+        "n_questions":  len(questions),
+        "badge":        badge.get("name", ""),
+        "pct":          badge.get("pct", 0),
+        "dataset_cols": list(cleaned_df.columns)[:8],
+        "questions":    [{"q": q["question"], "concept": q["concept"],
+                          "score": scores.get(str(i), {}).get("score", 0)}
+                         for i, q in enumerate(questions)],
+    }
+    if username:
+        save_session(username, session_data)
 
-        with col_retry:
-            if st.button("🔄 Retry Same Level"):
-                st.session_state.sq_phase = "setup"
-                st.rerun()
+    # Retry / upgrade buttons
+    st.divider()
+    col_r1, col_r2, col_r3 = st.columns(3)
+    with col_r1:
+        if st.button("🔄 Try Again (same level)", use_container_width=True):
+            st.session_state["challenge_active"]    = True
+            st.session_state["challenge_questions"] = None
+            st.session_state["challenge_answers"]   = {}
+            st.session_state["challenge_scores"]    = {}
+            st.session_state["challenge_followups"] = {}
+            st.session_state["challenge_complete"]  = False
+            st.rerun()
+    with col_r2:
+        next_levels = {"beginner": "intermediate", "intermediate": "advanced"}
+        next_level  = next_levels.get(difficulty)
+        if next_level and st.button(
+                f"⬆️ Upgrade to {DIFFICULTY_LABELS[next_level]}",
+                use_container_width=True):
+            st.session_state["challenge_difficulty"] = next_level
+            st.session_state["challenge_active"]     = True
+            st.session_state["challenge_questions"]  = None
+            st.session_state["challenge_answers"]    = {}
+            st.session_state["challenge_scores"]     = {}
+            st.session_state["challenge_followups"]  = {}
+            st.session_state["challenge_complete"]   = False
+            st.rerun()
+    with col_r3:
+        if st.button("📊 View My Progress", use_container_width=True):
+            st.info("Switch to the 📈 My Progress tab to see your full history.")
 
-        with col_harder:
-            difficulties = ["beginner", "intermediate", "advanced"]
-            current = st.session_state.sq_difficulty
-            current_idx = difficulties.index(current)
-            if current_idx < 2:
-                next_diff = difficulties[current_idx + 1]
-                if st.button(f"⬆️ Try {next_diff.title()}"):
-                    with st.spinner("Generating harder questions…"):
-                        questions = generate_questions(
-                            st.session_state.sq_analysis_summary,
-                            next_diff,
-                            len(st.session_state.sq_questions),
-                        )
-                    st.session_state.sq_questions = questions
-                    st.session_state.sq_answers = {}
-                    st.session_state.sq_feedbacks = {}
-                    st.session_state.sq_current_idx = 0
-                    st.session_state.sq_difficulty = next_diff
-                    st.session_state.sq_phase = "quiz"
-                    st.rerun()
 
-        with col_reset:
-            if st.button("📂 New Dataset"):
-                for key in [
-                    "sq_questions", "sq_answers", "sq_feedbacks",
-                    "sq_current_idx", "sq_phase", "sq_summary", "sq_analysis_summary"
-                ]:
-                    st.session_state[key] = None if "questions" in key or "summary" in key else {}
-                st.session_state.sq_phase = "setup"
-                st.session_state.sq_current_idx = 0
-                st.rerun()
+def _show_badge_guide():
+    """Shows the badge earning guide."""
+    st.markdown("#### 🏆 Badges You Can Earn")
+    cols = st.columns(4)
+    badge_list = [
+        ("🌱", "Novice", "0%+", "#6B7280"),
+        ("📊", "Analyst", "40%+", "#3B82F6"),
+        ("🔬", "Data Scientist", "65%+", "#8B5CF6"),
+        ("🏆", "Expert", "85%+", "#F59E0B"),
+    ]
+    for col, (emoji, name, threshold, color) in zip(cols, badge_list):
+        col.markdown(
+            f'<div style="background:#161B22;border:1px solid {color};'
+            f'border-radius:8px;padding:.8rem;text-align:center">'
+            f'<div style="font-size:1.8rem">{emoji}</div>'
+            f'<div style="font-weight:bold;color:{color}">{name}</div>'
+            f'<div style="font-size:.8rem;color:#8B949E">{threshold}</div>'
+            f'</div>', unsafe_allow_html=True
+        )

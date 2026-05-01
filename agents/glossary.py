@@ -1,166 +1,190 @@
-# agents/glossary.py — Data Science Glossary Tab
-# A searchable dictionary of data science terms for students
-
+# agents/glossary.py
 import streamlit as st
+import json
+import os
+import random
+from datetime import date
+
+GLOSSARY_PROGRESS_FILE = "data/glossary_progress.json"
 
 GLOSSARY = {
-    "A": [
-        {"term": "Accuracy", "definition": "The proportion of correct predictions out of all predictions made by a model. Calculated as (TP + TN) / Total. Can be misleading on imbalanced datasets."},
-        {"term": "Algorithm", "definition": "A set of rules or instructions a computer follows to solve a problem or make a decision, such as a decision tree or neural network."},
-        {"term": "Anomaly Detection", "definition": "The process of identifying data points that deviate significantly from the rest of the dataset. Used in fraud detection and quality control."},
-        {"term": "AutoML", "definition": "Automated Machine Learning — tools and techniques that automate the process of selecting and tuning ML models, making it easier for non-experts to build models."},
-    ],
-    "B": [
-        {"term": "Bias (Statistical)", "definition": "A systematic error in a model or dataset that causes consistently incorrect predictions. Can arise from unrepresentative training data."},
-        {"term": "Binary Classification", "definition": "A machine learning task where the model predicts one of exactly two possible outcomes, such as spam/not spam or pass/fail."},
-        {"term": "Boxplot", "definition": "A chart that displays the distribution of a dataset through its quartiles, showing the median, spread, and any outliers."},
-    ],
-    "C": [
-        {"term": "Classification", "definition": "A supervised learning task where the model predicts which category a data point belongs to, such as classifying emails as spam or not spam."},
-        {"term": "Clustering", "definition": "An unsupervised learning technique that groups similar data points together without using labelled data. K-means is a common clustering algorithm."},
-        {"term": "Confusion Matrix", "definition": "A table showing the counts of true positives, true negatives, false positives, and false negatives for a classification model's predictions."},
-        {"term": "Correlation", "definition": "A statistical measure of how strongly two variables are related. Values range from -1 (perfect negative) to +1 (perfect positive), with 0 meaning no relationship."},
-        {"term": "Cross-Validation", "definition": "A technique for evaluating a model by splitting data into multiple folds and training/testing on different combinations to get a reliable performance estimate."},
-        {"term": "CSV", "definition": "Comma-Separated Values — a plain text file format for storing tabular data, where each row is a line and columns are separated by commas."},
-    ],
-    "D": [
-        {"term": "Data Cleaning", "definition": "The process of identifying and fixing errors, inconsistencies, and missing values in a dataset before analysis or modelling."},
-        {"term": "Data Leakage", "definition": "When information from outside the training dataset is used to train a model, causing it to perform unrealistically well on test data but fail in the real world."},
-        {"term": "DataFrame", "definition": "A two-dimensional data structure (like a table) used in Pandas, with rows and columns, commonly used for data manipulation in Python."},
-        {"term": "Decision Tree", "definition": "A tree-shaped model that makes predictions by splitting data based on feature values at each node, ending in a predicted output at the leaves."},
-        {"term": "Deep Learning", "definition": "A subset of machine learning using neural networks with many layers (hence 'deep') to learn complex patterns, particularly in images, text, and audio."},
-        {"term": "Distribution", "definition": "The pattern of how values are spread across a dataset. Common distributions include normal (bell curve), skewed, and uniform distributions."},
-        {"term": "Duplicate", "definition": "A row in a dataset that is identical (or nearly identical) to another row, which can distort analysis and should typically be removed during data cleaning."},
-    ],
-    "E": [
-        {"term": "Ensemble Method", "definition": "A technique that combines multiple models to produce a better prediction than any individual model alone. Random Forest is a popular ensemble method."},
-        {"term": "Epoch", "definition": "One complete pass through the entire training dataset during the training of a neural network or deep learning model."},
-        {"term": "EU AI Act", "definition": "European Union legislation regulating AI systems based on their risk level, requiring transparency, documentation, and human oversight for high-risk applications."},
-    ],
-    "F": [
-        {"term": "F1 Score", "definition": "A metric that balances precision and recall into a single score, calculated as 2 × (Precision × Recall) / (Precision + Recall). Useful for imbalanced datasets."},
-        {"term": "False Negative (FN)", "definition": "When a model incorrectly predicts the negative class for a data point that is actually positive. Also called a Type II error."},
-        {"term": "False Positive (FP)", "definition": "When a model incorrectly predicts the positive class for a data point that is actually negative. Also called a Type I error."},
-        {"term": "Feature", "definition": "An individual measurable property or column used as input to a machine learning model. Also called a variable, attribute, or predictor."},
-        {"term": "Feature Engineering", "definition": "The process of creating new features or transforming existing ones to improve a model's performance."},
-    ],
-    "G": [
-        {"term": "GPT", "definition": "Generative Pre-trained Transformer — a type of large language model developed by OpenAI, capable of generating human-like text and answering questions."},
-        {"term": "Gradient Descent", "definition": "An optimisation algorithm used to minimise a model's error by iteratively adjusting its parameters in the direction that reduces the loss function."},
-    ],
-    "H": [
-        {"term": "Heatmap", "definition": "A colour-coded grid visualisation used to show the magnitude of values in a matrix, commonly used to display correlation between features."},
-        {"term": "Hyperparameter", "definition": "A parameter set before training a model (not learned from the data), such as the number of trees in a Random Forest or the learning rate."},
-        {"term": "Hypothesis", "definition": "A testable statement about a relationship or pattern in data that statistical analysis is used to support or reject."},
-    ],
-    "I": [
-        {"term": "Imputation", "definition": "The process of filling in missing values in a dataset using a strategy such as the mean, median, or a predicted value."},
-        {"term": "Imbalanced Dataset", "definition": "A dataset where one class has significantly more examples than another, which can cause a model to be biased towards the majority class."},
-    ],
-    "K": [
-        {"term": "K-Means", "definition": "A clustering algorithm that partitions data into K groups by minimising the distance between data points and their cluster centre (centroid)."},
-        {"term": "K-Nearest Neighbours (KNN)", "definition": "A classification algorithm that assigns a label to a data point based on the majority label of its K nearest neighbours in the feature space."},
-        {"term": "Kaggle", "definition": "An online platform for data science competitions and datasets, widely used for learning and practising machine learning with real-world data."},
-    ],
-    "L": [
-        {"term": "Label", "definition": "The target output value in a supervised learning dataset — what the model is trying to predict, such as 'spam' or 'not spam'."},
-        {"term": "Linear Regression", "definition": "A model that predicts a continuous numeric output by fitting a straight line through the data, minimising the sum of squared errors."},
-        {"term": "Logistic Regression", "definition": "Despite the name, a classification algorithm (not regression) that predicts the probability of a binary outcome using a sigmoid function."},
-        {"term": "Loss Function", "definition": "A function that measures how far a model's predictions are from the true values. The model is trained by minimising this function."},
-    ],
-    "M": [
-        {"term": "Machine Learning (ML)", "definition": "A branch of AI where systems learn patterns from data and improve their performance on tasks without being explicitly programmed."},
-        {"term": "Mean", "definition": "The average of a set of values, calculated by summing all values and dividing by the count. Sensitive to outliers."},
-        {"term": "Median", "definition": "The middle value of a sorted dataset. More robust to outliers than the mean and better represents the centre of skewed data."},
-        {"term": "Missing Values", "definition": "Data points that are absent from a dataset, represented as NaN or null. Must be handled before modelling, typically by removal or imputation."},
-        {"term": "Model", "definition": "A mathematical representation of a pattern in data, trained on examples and used to make predictions or decisions on new, unseen data."},
-        {"term": "Multicollinearity", "definition": "When two or more features in a dataset are highly correlated with each other, which can make it difficult to determine their individual effects on the target."},
-    ],
-    "N": [
-        {"term": "Naive Bayes", "definition": "A probabilistic classifier based on Bayes' theorem that assumes all features are independent of each other. Fast and effective for text classification."},
-        {"term": "Normalisation", "definition": "Scaling numerical features to a standard range (usually 0 to 1) so that no single feature dominates due to its scale."},
-        {"term": "Null Value", "definition": "A missing or undefined value in a dataset, often represented as NaN (Not a Number) in Python's Pandas library."},
-    ],
-    "O": [
-        {"term": "Outlier", "definition": "A data point that lies far from the rest of the data. Outliers can indicate errors in data collection or genuinely unusual observations."},
-        {"term": "Overfitting", "definition": "When a model learns the training data too well, including its noise, and performs poorly on new unseen data. Prevented by regularisation and cross-validation."},
-    ],
-    "P": [
-        {"term": "Pandas", "definition": "A Python library for data manipulation and analysis, providing DataFrame and Series structures for working with tabular and time series data."},
-        {"term": "Precision", "definition": "The proportion of positive predictions that were actually correct. Calculated as TP / (TP + FP). Important when false positives are costly."},
-        {"term": "Proxy Variable", "definition": "A variable that is correlated with a protected attribute (such as race or gender) and can introduce bias into a model even when the protected attribute is excluded."},
-    ],
-    "R": [
-        {"term": "Random Forest", "definition": "An ensemble model that builds many decision trees on random subsets of data and features, then combines their predictions by voting or averaging."},
-        {"term": "Recall", "definition": "The proportion of actual positives that were correctly identified by the model. Calculated as TP / (TP + FN). Important when false negatives are costly."},
-        {"term": "Regression", "definition": "A supervised learning task where the model predicts a continuous numeric output, such as predicting house prices or temperature."},
-        {"term": "ROC-AUC", "definition": "Receiver Operating Characteristic — Area Under Curve. A metric measuring a model's ability to distinguish between classes across all classification thresholds."},
-    ],
-    "S": [
-        {"term": "Scikit-learn", "definition": "A Python machine learning library providing tools for classification, regression, clustering, and preprocessing, built on NumPy and SciPy."},
-        {"term": "Skewness", "definition": "A measure of the asymmetry of a data distribution. Positive skew means a long right tail; negative skew means a long left tail."},
-        {"term": "Standard Deviation", "definition": "A measure of how spread out values are around the mean. A high standard deviation means values are widely dispersed."},
-        {"term": "Supervised Learning", "definition": "A type of machine learning where the model is trained on labelled data — input-output pairs — and learns to predict the output for new inputs."},
-        {"term": "Support Vector Machine (SVM)", "definition": "A classification algorithm that finds the optimal boundary (hyperplane) between classes by maximising the margin between the nearest data points."},
-    ],
-    "T": [
-        {"term": "Target Variable", "definition": "The column in a dataset that a model is trained to predict. Also called the dependent variable, label, or output."},
-        {"term": "Test Set", "definition": "A portion of the dataset kept separate from training, used to evaluate how well the model generalises to unseen data."},
-        {"term": "Training Set", "definition": "The portion of data used to train a machine learning model. The model learns patterns from this data."},
-        {"term": "Transfer Learning", "definition": "Using a model trained on one task as a starting point for a different but related task, reducing the need for large amounts of new training data."},
-    ],
-    "U": [
-        {"term": "Underfitting", "definition": "When a model is too simple to capture the patterns in the data, resulting in poor performance on both training and test data."},
-        {"term": "Unsupervised Learning", "definition": "A type of machine learning where the model finds patterns in data without labelled examples, such as clustering or dimensionality reduction."},
-    ],
-    "V": [
-        {"term": "Validation Set", "definition": "A subset of data used during training to tune hyperparameters and evaluate model performance, separate from both training and test sets."},
-        {"term": "Variance", "definition": "A measure of how much a model's predictions change when trained on different subsets of data. High variance leads to overfitting."},
-        {"term": "Visualisation", "definition": "The representation of data through charts, graphs, and plots to help identify patterns, trends, and outliers that are not obvious in raw numbers."},
-    ],
-    "W": [
-        {"term": "Weight", "definition": "A learnable parameter in a machine learning model that is adjusted during training to minimise the loss function."},
-    ],
+    "Mean": {"definition": "The arithmetic average — sum of all values divided by the count. Sensitive to outliers.", "category": "Statistics", "related": ["Median", "Mode", "Standard Deviation"], "example": "Mean income of [20k, 30k, 100k] = 50k — distorted by the high earner."},
+    "Median": {"definition": "The middle value when data is sorted. Robust to outliers — preferred for skewed distributions.", "category": "Statistics", "related": ["Mean", "Skewness", "IQR"], "example": "Median income of [20k, 30k, 100k] = 30k — not affected by the high earner."},
+    "Standard Deviation": {"definition": "Measures how spread out values are around the mean. Large std = high variability.", "category": "Statistics", "related": ["Mean", "Variance", "Normal Distribution"], "example": "Heights: mean=170cm, std=5cm means most people are 165-175cm."},
+    "Correlation": {"definition": "Measures the strength and direction of a linear relationship between two variables. r ranges from -1 to +1.", "category": "Statistics", "related": ["Pearson Coefficient", "Causation", "Scatter Plot"], "example": "r = 0.9 between hours studied and exam score means strong positive relationship."},
+    "Skewness": {"definition": "Measures the asymmetry of a distribution. Positive skew = long right tail. Negative skew = long left tail.", "category": "Statistics", "related": ["Normal Distribution", "Mean", "Median"], "example": "Income data is positively skewed — most earn average wages, few earn millions."},
+    "P-value": {"definition": "The probability of observing results as extreme as the data, assuming the null hypothesis is true. p < 0.05 is typically significant.", "category": "Statistics", "related": ["Hypothesis Testing", "Null Hypothesis", "Confidence Interval"], "example": "p = 0.03 means there is a 3% chance the result occurred by random chance."},
+    "Normal Distribution": {"definition": "A symmetric bell-shaped distribution where most values cluster around the mean.", "category": "Statistics", "related": ["Mean", "Standard Deviation", "Skewness"], "example": "Heights of adults approximately follow a normal distribution."},
+    "IQR": {"definition": "Interquartile Range — the difference between Q3 and Q1. Used to detect outliers.", "category": "Statistics", "related": ["Quartile", "Outlier", "Box Plot"], "example": "Values outside Q1 - 1.5xIQR or Q3 + 1.5xIQR are flagged as outliers."},
+    "Overfitting": {"definition": "When a model learns the training data too well including noise and fails to generalise to new data.", "category": "Machine Learning", "related": ["Underfitting", "Cross-Validation", "Regularisation"], "example": "A student who memorises exam answers but cannot apply knowledge to new questions."},
+    "Underfitting": {"definition": "When a model is too simple to capture patterns in the data.", "category": "Machine Learning", "related": ["Overfitting", "Model Complexity", "Bias-Variance Tradeoff"], "example": "A linear model trying to fit a curved relationship will underfit."},
+    "Cross-Validation": {"definition": "A technique to estimate model performance by splitting data into multiple train/test subsets and averaging results.", "category": "Machine Learning", "related": ["Train/Test Split", "Overfitting", "Generalisation"], "example": "5-fold CV splits data into 5 parts, trains on 4, tests on 1, repeated 5 times."},
+    "Random Forest": {"definition": "An ensemble method that builds many decision trees and takes a majority vote.", "category": "Machine Learning", "related": ["Decision Tree", "Ensemble Learning", "Feature Importance"], "example": "Asking 100 experts and taking a majority vote instead of relying on one expert."},
+    "Feature Importance": {"definition": "A score indicating how much each input column contributed to a model's predictions.", "category": "Machine Learning", "related": ["Random Forest", "Gradient Boosting", "Feature Selection"], "example": "Feature importance of 0.45 for age means age was the most influential predictor."},
+    "Accuracy": {"definition": "The proportion of correct predictions out of all predictions. Misleading when classes are imbalanced.", "category": "Machine Learning", "related": ["Precision", "Recall", "F1 Score"], "example": "90% accuracy sounds good but if 90% of data is class A, always predicting A achieves this."},
+    "EDA": {"definition": "Exploratory Data Analysis — the process of summarising and visualising data to discover patterns before modelling.", "category": "Data Science", "related": ["Data Cleaning", "Visualisation", "Statistics"], "example": "Plotting distributions, checking correlations, and identifying outliers before modelling."},
+    "Data Cleaning": {"definition": "The process of detecting and fixing errors, missing values, duplicates, and inconsistencies in a dataset.", "category": "Data Science", "related": ["Missing Values", "Outlier", "Imputation"], "example": "Removing duplicate rows, filling missing ages with median, standardising column names."},
+    "Missing Values": {"definition": "Cells with no data — represented as NaN, null, or blank. Must be handled before analysis or modelling.", "category": "Data Science", "related": ["Imputation", "Data Cleaning"], "example": "40 missing values in the age column — filled using median imputation."},
+    "Outlier": {"definition": "A data point significantly different from other observations. Detected using IQR or Z-score methods.", "category": "Data Science", "related": ["IQR", "Z-Score", "Box Plot"], "example": "An income of 2,000,000 in a dataset of typical salaries is an outlier."},
+    "Histogram": {"definition": "A bar chart showing the frequency distribution of a numeric variable, divided into bins.", "category": "Visualisation", "related": ["Distribution", "Bins", "Skewness"], "example": "A histogram of ages shows most customers are between 25 and 45."},
+    "Box Plot": {"definition": "A chart showing median, quartiles, and outliers for a numeric variable.", "category": "Visualisation", "related": ["IQR", "Outlier", "Median"], "example": "The box covers Q1 to Q3, the line is median, dots beyond whiskers are outliers."},
+    "Heatmap": {"definition": "A colour-coded matrix showing values — commonly used to visualise correlation matrices.", "category": "Visualisation", "related": ["Correlation", "Matrix"], "example": "Dark green cells in a correlation heatmap indicate strong positive correlations."},
+    "Bias": {"definition": "Systematic error in a dataset or model that produces unfair or inaccurate outcomes for certain groups.", "category": "Ethics", "related": ["Fairness", "Proxy Variable", "Class Imbalance"], "example": "A hiring model trained on historical data may disadvantage women if underrepresented."},
+    "Fairness": {"definition": "The principle that AI systems should treat all individuals and groups equitably without discrimination.", "category": "Ethics", "related": ["Bias", "EU AI Act", "Protected Characteristics"], "example": "A loan model should not reject applications based on postcode as a proxy for race."},
+    "EU AI Act": {"definition": "European regulation (2024) requiring AI systems to be transparent, explainable, and free from discriminatory bias.", "category": "Ethics", "related": ["Bias", "Fairness", "Explainability"], "example": "A hospital using AI for diagnosis must document bias checks and provide explanations."},
+    "Pandas": {"definition": "A Python library for data manipulation and analysis — provides DataFrame structures for tabular data.", "category": "Tools", "related": ["NumPy", "DataFrame", "Python"], "example": "df.dropna() removes rows with missing values."},
+    "Streamlit": {"definition": "A Python framework for building and deploying interactive web applications for data science.", "category": "Tools", "related": ["Python", "Plotly", "Deployment"], "example": "DataForge is built entirely with Streamlit."},
+    "LangChain": {"definition": "A framework for building applications powered by large language models.", "category": "Tools", "related": ["GPT-4", "Multi-Agent", "Orchestrator"], "example": "DataForge uses LangChain to coordinate its pipeline agents."},
+    "Plotly": {"definition": "A Python library for creating interactive charts.", "category": "Tools", "related": ["Matplotlib", "Seaborn", "Visualisation"], "example": "DataForge uses Plotly so students can hover over data points for details."},
+    "scikit-learn": {"definition": "The most widely used Python machine learning library.", "category": "Tools", "related": ["Python", "Machine Learning", "Pandas"], "example": "DataForge AutoML agent uses scikit-learn to train and compare algorithms."},
 }
 
 
-def show_glossary_tab(st) -> None:
-    """Renders the full searchable glossary tab."""
-    st.header("📖 Data Science Glossary")
-    st.markdown("Search for any data science term used in DataForge or your studies.")
-
-    # Search bar
-    query = st.text_input("🔍 Search a term...", placeholder="e.g. overfitting, precision, clustering")
-
-    if query.strip():
-        _show_search_results(st, query.strip().lower())
-    else:
-        _show_full_glossary(st)
+def get_term_of_the_day():
+    terms = list(GLOSSARY.keys())
+    idx   = hash(str(date.today())) % len(terms)
+    term  = terms[idx]
+    return term, GLOSSARY[term]
 
 
-def _show_search_results(st, query: str) -> None:
-    matches = []
-    for letter, terms in GLOSSARY.items():
-        for entry in terms:
-            if query in entry["term"].lower() or query in entry["definition"].lower():
-                matches.append(entry)
-
-    if not matches:
-        st.warning(f"No results found for '{query}'. Try a different keyword.")
-        return
-
-    st.success(f"Found {len(matches)} result(s) for '{query}':")
-    for entry in matches:
-        with st.expander(f"**{entry['term']}**", expanded=True):
-            st.markdown(entry["definition"])
+def get_categories():
+    return sorted(set(v["category"] for v in GLOSSARY.values()))
 
 
-def _show_full_glossary(st) -> None:
-    st.markdown(f"**{sum(len(v) for v in GLOSSARY.values())} terms across {len(GLOSSARY)} letters**")
+def _load_glossary_progress():
+    os.makedirs("data", exist_ok=True)
+    if os.path.exists(GLOSSARY_PROGRESS_FILE):
+        with open(GLOSSARY_PROGRESS_FILE) as f:
+            return json.load(f)
+    return {}
+
+
+def _save_glossary_progress(progress):
+    os.makedirs("data", exist_ok=True)
+    with open(GLOSSARY_PROGRESS_FILE, "w") as f:
+        json.dump(progress, f, indent=2)
+
+
+def set_term_status(username, term, status):
+    progress = _load_glossary_progress()
+    if username not in progress:
+        progress[username] = {}
+    progress[username][term] = status
+    _save_glossary_progress(progress)
+
+
+def get_term_statuses(username):
+    progress = _load_glossary_progress()
+    return progress.get(username, {})
+
+
+def ai_define_term(client, term):
+    if not client:
+        return f"**{term}**: Add your OpenAI API key for AI-powered definitions."
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{
+                "role": "system",
+                "content": "You are a data science educator. Define the term in 2-3 sentences with one example. Format: Definition: ... | Example: ... | Related: term1, term2"
+            }, {
+                "role": "user",
+                "content": f"Define: {term}"
+            }],
+            max_tokens=200, temperature=0.3
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"Could not generate definition: {e}"
+
+
+def render_glossary_tab(username="", gpt_client=None):
+    st.markdown("### 📖 Data Science Glossary")
+    st.markdown("Your A-Z reference for data science, machine learning, statistics and AI ethics.")
+
+    term_name, term_data = get_term_of_the_day()
+    st.markdown(
+        f'<div style="background:linear-gradient(135deg,#028090,#02C39A);'
+        f'border-radius:12px;padding:1.2rem 1.5rem;margin-bottom:1rem">'
+        f'<div style="color:white;font-size:.8rem;font-weight:bold;text-transform:uppercase">✨ Term of the Day</div>'
+        f'<div style="color:white;font-size:1.4rem;font-weight:900;margin:.3rem 0">{term_name}</div>'
+        f'<div style="color:rgba(255,255,255,.9);font-size:.95rem">{term_data["definition"]}</div>'
+        f'<div style="color:rgba(255,255,255,.7);font-size:.82rem;margin-top:.5rem">Category: {term_data["category"]}</div>'
+        f'</div>', unsafe_allow_html=True)
+
     st.divider()
 
-    for letter, terms in sorted(GLOSSARY.items()):
-        st.markdown(f"### {letter}")
-        for entry in terms:
-            with st.expander(f"{entry['term']}"):
-                st.markdown(entry["definition"])
+    col_s, col_c = st.columns([3, 2])
+    with col_s:
+        search = st.text_input("Search terms", placeholder="e.g. correlation, overfitting...",
+                                key="glossary_search", label_visibility="collapsed")
+    with col_c:
+        categories = ["All"] + get_categories()
+        cat_filter = st.selectbox("Filter by category", categories,
+                                   key="glossary_cat", label_visibility="collapsed")
+
+    statuses = get_term_statuses(username) if username else {}
+
+    filtered = {}
+    for term, data in sorted(GLOSSARY.items()):
+        if search and search.lower() not in term.lower() and search.lower() not in data["definition"].lower():
+            continue
+        if cat_filter != "All" and data["category"] != cat_filter:
+            continue
+        filtered[term] = data
+
+    st.markdown(f"**{len(filtered)} term(s)** | "
+                f"✅ {sum(1 for s in statuses.values() if s=='know')} known · "
+                f"📚 {sum(1 for s in statuses.values() if s=='learning')} learning")
+    st.divider()
+
+    for term, data in filtered.items():
+        term_status = statuses.get(term, "unmarked")
+        status_icon = "✅" if term_status == "know" else "📚" if term_status == "learning" else "○"
+
+        with st.expander(f"{status_icon} **{term}** — *{data['category']}*"):
+            st.markdown(f"**Definition:** {data['definition']}")
+            if data.get("example"):
+                st.markdown(
+                    f'<div style="background:#0D2137;border-left:3px solid #028090;'
+                    f'padding:.5rem 1rem;border-radius:0 6px 6px 0;'
+                    f'font-size:.9rem;color:#94A3B8;margin:.5rem 0">'
+                    f'📌 <em>{data["example"]}</em></div>', unsafe_allow_html=True)
+            if data.get("related"):
+                st.markdown("**Related:** " + " · ".join(f"`{r}`" for r in data["related"]))
+
+            if username:
+                b1, b2 = st.columns(2)
+                with b1:
+                    if st.button("✅ I Know This", key=f"know_{term}"):
+                        set_term_status(username, term,
+                                         "unmarked" if term_status == "know" else "know")
+                        st.rerun()
+                with b2:
+                    if st.button("📚 Still Learning", key=f"learning_{term}"):
+                        set_term_status(username, term,
+                                         "unmarked" if term_status == "learning" else "learning")
+                        st.rerun()
+
+    st.divider()
+    st.markdown("### 🤖 AI Definition Lookup")
+    st.markdown("Can't find a term? Ask the AI for an instant definition.")
+    col_ai1, col_ai2 = st.columns([4, 1])
+    with col_ai1:
+        custom_term = st.text_input("Enter any data science term:",
+                                     placeholder="e.g. SHAP values, t-SNE, SMOTE...",
+                                     key="ai_lookup_term", label_visibility="collapsed")
+    with col_ai2:
+        lookup_btn = st.button("Define", key="ai_define_btn", use_container_width=True)
+
+    if lookup_btn and custom_term.strip():
+        if custom_term.strip() in GLOSSARY:
+            st.info(f"**{custom_term}** is already in the glossary above!")
+        else:
+            with st.spinner(f"GPT-4 is defining '{custom_term}'..."):
+                definition = ai_define_term(gpt_client, custom_term.strip())
+            st.markdown(
+                f'<div style="background:#161B22;border-left:4px solid #02C39A;'
+                f'padding:1rem 1.4rem;border-radius:0 8px 8px 0;color:#E6EDF3">'
+                f'<strong>{custom_term}</strong><br><br>{definition}</div>',
+                unsafe_allow_html=True)
