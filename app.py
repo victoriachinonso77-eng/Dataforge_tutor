@@ -532,16 +532,19 @@ def _render_chat_mode(level, use_gpt, gpt_client, use_live):
 
 # ── Ethics banner — shown once per session ────────────────────────
     if "ethics_banner_dismissed" not in st.session_state:
-        col_e1, col_e2 = st.columns([8, 1])
-        with col_e1:
-            st.info(
-                "⚖️ **New here?** DataForge uses autonomous AI agents to process your data. "
-                "Read our **Ethics & Transparency** section to understand how your data is handled, "
-                "what decisions the AI makes, and what safeguards are in place. "
-                "Scroll to the bottom of this page to read it."
-            )
-        with col_e2:
-            if st.button("✕ Dismiss", key="dismiss_ethics"):
+            st.markdown("""
+            <div style="background:#0D2137;border:1px solid #028090;border-radius:10px;
+                        padding:12px 16px;margin-bottom:12px;display:flex;
+                        align-items:center;justify-content:space-between;gap:12px">
+                <span style="color:#E6EDF3;font-size:0.9rem">
+                    ⚖️ <strong>New here?</strong> DataForge uses autonomous AI agents to process 
+                    your data. Read our <strong>Ethics & Transparency</strong> section at the 
+                    bottom of this page to understand how your data is handled and what 
+                    safeguards are in place.
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("✕  Dismiss ethics notice", key="dismiss_ethics"):
                 st.session_state["ethics_banner_dismissed"] = True
                 st.rerun()
 
@@ -1177,7 +1180,7 @@ st.markdown("")
 # Logout button
 render_logout_button()
 
-t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13 = st.tabs([
+t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, = st.tabs([
     "🧹 Cleaning", "📊 Analysis", "📈 Visualisation",
     "🤖 AutoML", "💬 Ask the Tutor", "📝 Report",
     "⚖️ Bias Report", "🤝 Collaborate",
@@ -2033,8 +2036,7 @@ with t13:
     st.markdown("All datasets you have analysed with DataForge.")
     render_dataset_history(st.session_state.get("username", ""))
 
-with t14:
-    render_ethics_tab()
+
 
 # ── Final score ────────────────────────────────────────────────────────────
 st.divider()

@@ -1,0 +1,106 @@
+{
+  "abdul": {
+    "sessions": [
+      {
+        "dataset": "demo_dataset.csv",
+        "rows": 415,
+        "cols": 8,
+        "key_findings": [
+          "Skewed columns: income"
+        ],
+        "ai_summary": "(1) This dataset contains 415 rows and 8 columns, with numerical data in columns such as 'age', 'income', 'spending_score', 'visits', and 'churn'. \n(2) Interestingly, none of these numerical columns show strong correlations with each other, and the 'income' column is skewed. \n(3) Next, it would be useful to explore why the 'income' column is skewed and if there are any underlying patterns or outliers causing this skewness. Also, despite the lack of strong correlations, further analysis can be done to find potential hidden relationships between the variables.",
+        "timestamp": "2026-05-01 23:32"
+      },
+      {
+        "dataset": "demo_dataset.csv",
+        "rows": 415,
+        "cols": 8,
+        "key_findings": [
+          "Skewed columns: income"
+        ],
+        "ai_summary": "(1) This dataset contains 415 rows and 8 columns, with numeric data on variables like 'age', 'income', 'spending_score', 'visits', and 'churn'. (2) The most interesting finding is that there are no strong correlations between any of the variables. (3) It would be interesting to further explore the 'income' column, as it is the only one that is skewed, and to understand the implications of the 11 transformations that were made during the cleaning process.",
+        "timestamp": "2026-05-01 23:57"
+      },
+      {
+        "dataset": "demo_dataset.csv",
+        "rows": 415,
+        "cols": 8,
+        "key_findings": [
+          "Skewed columns: income"
+        ],
+        "ai_summary": "(1) The dataset contains 415 rows and 8 columns, with numerical data on factors such as age, income, spending score, visits, and churn. (2) Interestingly, there are no strong correlations between any of these variables, and the 'income' variable is skewed. (3) Next, it would be useful to explore why the income data is skewed and if any transformations could normalize it, as well as delve deeper into potential relationships that might not be immediately obvious from the correlation matrix.",
+        "timestamp": "2026-05-02 00:25"
+      },
+      {
+        "dataset": "demo_dataset.csv",
+        "rows": 415,
+        "cols": 8,
+        "key_findings": [
+          "Skewed columns: income"
+        ],
+        "ai_summary": "(1) This dataset contains 415 rows and 8 columns, with the numeric columns being 'age', 'income', 'spending_score', 'visits', and 'churn'. (2) Interestingly, there are no strong correlations observed among these variables, and the 'income' variable is found to be skewed. (3) Next, it would be intriguing to explore why the 'income' column is skewed and to further investigate the relationships between variables, potentially using different analysis techniques or considering other variables not yet examined.",
+        "timestamp": "2026-05-02 00:35"
+      },
+      {
+        "dataset": "demo_dataset.csv",
+        "rows": 415,
+        "cols": 8,
+        "key_findings": [
+          "Skewed columns: income"
+        ],
+        "ai_summary": "(1) This dataset contains 415 rows and 8 columns, with the numeric columns including 'age', 'income', 'spending_score', 'visits', and 'churn'. (2) The most interesting finding is that there are no strong correlations among any of the numeric variables, and the 'income' column is notably skewed. (3) Next, it would be worth exploring why the 'income' column is skewed and if there are any underlying patterns or outliers influencing this, as well as attempting to find any hidden correlations or patterns in the data after the 11 cleaning transformations.",
+        "timestamp": "2026-05-02 00:40"
+      },
+      {
+        "dataset": "demo_dataset.csv",
+        "rows": 415,
+        "cols": 8,
+        "key_findings": [
+          "Skewed columns: income"
+        ],
+        "ai_summary": "(1) This dataset consists of 415 rows and 8 columns, with numeric columns including 'age', 'income', 'spending_score', 'visits', and 'churn'. It has undergone 11 cleaning and transformation steps to ensure data quality. (2) Interestingly, there are no strong correlations observed among the variables in this dataset. (3) Given the lack of strong correlations, it might be worth exploring more complex relationships, possibly through multivariate analysis, or examining the skewed 'income' variable in more detail.",
+        "timestamp": "2026-05-02 00:48"
+      },
+      {
+        "dataset": "demo_dataset.csv",
+        "rows": 415,
+        "cols": 8,
+        "key_findings": [
+          "Skewed columns: income"
+        ],
+        "ai_summary": "(1) This dataset contains 415 rows and 8 columns, with numeric columns including 'age', 'income', 'spending_score', 'visits', and 'churn'. (2) Interestingly, the dataset does not show any strong correlations between the variables, and the 'income' column is skewed. (3) Next, it would be worth exploring why the 'income' column is skewed and if any further cleaning or transformations are required to better understand the dataset.",
+        "timestamp": "2026-05-02 01:04"
+      },
+      {
+        "dataset": "demo_dataset.csv",
+        "rows": 415,
+        "cols": 8,
+        "key_findings": [
+          "Skewed columns: income"
+        ],
+        "ai_summary": "(1) The dataset contains 415 rows and 8 columns, which include numeric data on age, income, spending score, visits, and churn. \n(2) The most interesting finding is that there are no strong correlations between any of the numeric variables in the dataset. \n(3) Next, it would be worth exploring why the 'income' column is skewed and if any transformations could normalize it, and also investigating potential relationships between variables that might not be immediately obvious through correlation analysis.",
+        "timestamp": "2026-05-02 01:21"
+      },
+      {
+        "dataset": "demo_dataset.csv",
+        "rows": 415,
+        "cols": 8,
+        "key_findings": [
+          "Skewed columns: income"
+        ],
+        "ai_summary": "(1) This dataset consists of 415 rows and 8 columns, with numerical data in 'age', 'income', 'spending_score', 'visits', and 'churn' columns. (2) The most interesting finding is that there are no strong correlations among the variables, and the 'income' column is skewed. (3) Next, it would be interesting to explore the reason behind the skewness in 'income' and potentially perform further transformations to normalize the data, and investigate potential relationships between variables that might not be linear.",
+        "timestamp": "2026-05-02 01:48"
+      },
+      {
+        "dataset": "adult (1).csv",
+        "rows": 32560,
+        "cols": 15,
+        "key_findings": [
+          "Skewed columns: 77516, 2174, 0"
+        ],
+        "ai_summary": "(1) This dataset contains 32,560 rows and 15 columns, with six of those columns being numeric in nature, specifically '39', '77516', '13', '2174', '0', and '40'. \n(2) Despite the size and diversity of the dataset, there were no strong correlations found among the data points. \n(3) The next step would be to explore the three skewed columns ('77516', '2174', '0') further to understand why they are skewed and if any patterns or insights can be gleaned from them.",
+        "timestamp": "2026-05-02 02:31"
+      }
+    ]
+  }
+}
